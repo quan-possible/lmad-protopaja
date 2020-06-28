@@ -1,164 +1,152 @@
 import cv2
 import math
-from PIL import Image, ImageDraw
-from matplotlib import pyplot as plt
 import numpy as np
 import statistics
+from PIL import Image, ImageDraw
+from matplotlib import pyplot as plt
 from itertools import zip_longest
 from timeit import default_timer as timer
 from skimage import draw
+from scipy.interpolate import BSpline
 
 
-det_val, trash_val = 90, 0
-lum_range = (89,92)
 
-# Calculate magnitude of vector
-def mag(x1, x2, y1, y2):
-    return math.sqrt((x2-x1)**2 + (y2-y1)**2)
+def paint_path(image, road_val_range):
 
-# Remove all the unecessary cars, skies,... and make it a 0 value (trash_val)
-def process_image(image, cond):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray[cond(gray)] = det_val
-    gray[~cond(gray)] = trash_val     # Boolean Indexing
-    return gray
+    """
 
-def cond(image):
-    return ((image > lum_range[0]) &  # lum_range[1] and lum_range[2] is the range of luminance
-            (image < lum_range[1]))           # of road surface (the part of the picture we need).
-    # Return False if its not the road
+    This is a small file containing a function that helps paint a trajectory for the robot.
 
-# def find_top_road(image):
-#     first_row = np.where(image == 90)[0]
-#     all_in_first_row = np.where(image[first_row] == 90)[0]
-#     return first_row,all_in_first_row[len(all_in_first_row)//2]
+    Prerequisites
+    -------------
+    Opencv: Works with images.
+    Numpy: Matrices manipulations and calculations.
+    Skikit-image: Paints the image.
 
-def check_cond(daRow):
-    i = 0
-    while daRow[i] != 90:
-        i += 1
-    else:
-        return i
+    Parameters
+    ----------
+    image : Image as numpy array
+    road_val_range : The brightness of the road
 
-def find_average_row(row,width,check_cond):
-    reversed_row = row[::-1]
-    found_right = width-np.where(reversed_row == 90)[0][0]-1
-    found_left = np.where(row == 90)[0][0]
-    # found_right = width-check_cond(reversed_row)
-    # found_left = check_cond(row)
-    average_pos = (found_left + found_right)/2
-    return int(average_pos)
+    Returns
+    -------
+    image : The painted version of the image.
 
-# Find the first occurence of road in the row ,ie. find the edge of the road.
-# Admittedly, there are better ways to do this but i did this in the beginning
-# for tests, and i saw no harm.
-def find_cali_area(image):
-    height, width = int(image.shape[0]), int(image.shape[1])
-    try:
-        itemindex = np.where(image[0:int(height-height/10),:] == 90)
-        return itemindex[0][0], itemindex[0][::-1][0]
-    except:
-        return None
-
-def paint_path(image):
+    """
+    font = cv2.FONT_HERSHEY_SIMPLEX
     height, width = int(image.shape[0]), int(image.shape[1]-1)
+    current_pos = height-1,width/2
+    # This is the substitute for the road_val_range.
+    # When the pixels where the roads appear is determined,
+    # they are assigned to the first value of the tuple.
+    # Every other pixels are assigned to the latter value.
+    reclassifying_val = 90, 0
 
-    ''' Process the image. Refer to the process_image function for more details. '''
+    def mag(x1, x2, y1, y2):
+        return math.sqrt((x2-x1)**2 + (y2-y1)**2)
+    
+    def find_road_top_bot(image):
+        height, width = int(image.shape[0]), int(image.shape[1])
+        try:
+            # Remove the bottom part of the image from the search by slicing until (height-height/10)
+            itemindex = np.where(image[0:int(height-height/10),:] == reclassifying_val[0])
+            return itemindex[0][0], itemindex[0][::-1][0]
+        except:
+            return None
+
+    # Find the middle point of a slice of road contained in a row of the image.
+    # It does so by finding the first and last element in the row that has the same
+    # brightness value of the road and calculate their average.
+    def find_row_average(row):
+        reversed_row = row[::-1]
+        found_right = width-np.where(reversed_row == reclassifying_val[0])[0][0]-1
+        found_left = np.where(row == reclassifying_val[0])[0][0]
+        average_pos = (found_left + found_right)/2
+        return int(average_pos)
+
+    # Private function which return a boolean-indexed version of the image.
+    # It selects only the pixel contains the value that fits the given brightness
+    # of the road.
+    def cond(image):
+        return ((image > road_val_range[0]) &  # road_val_range[1] and road_val_range[2] is the range of 
+                (image < road_val_range[1]))   # brightness of road surface (the part of the picture we need).
+        # Return False if its not the road
+
+    # Turn the image into a grayscale version and remove every thing but the road,
+    # using boolean-indexing function.
+    def process_image(image, cond):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray[cond(gray)] = reclassifying_val[0]
+        gray[~cond(gray)] = reclassifying_val[1]     # Boolean Indexing
+        return gray
+
+    # From the given list of average points, calculate the angle between current_pos and its nearest point.
+    def get_turning_angle(points_list):
+        destination = points_list[-1]
+        bot_right = (height-height/10,width/2)
+        ang = math.degrees(math.atan2(destination[1]-current_pos[1], destination[0]-current_pos[0]) - \
+            math.atan2(bot_right[1]-current_pos[1], bot_right[0]-current_pos[0]))
+        # return str(ang + 360) if ang < 0 else str(ang)
+        return str(360+ang) if ang < -180 else str(ang)
+
+    # Process the image. Refer to the process_image function for more details.
     processed_img = process_image(image, cond)
-    # cv2.imshow('ngon', processed_img)
-    # cv2.waitKey(0)
-    # The rows of the image which have roads in it
-    # try:
-    cali_area = find_cali_area(processed_img)
+    road_top_bot = find_road_top_bot(processed_img)
 
-    ''' This single loop do the whole job '''
-    if cali_area != None:
+    ''' This single loop do the job '''
+    if road_top_bot != None:
         avg_list = []
-        i = cali_area[0]
+
+        # Keep count of the row number (y-coordinate).
+        i = road_top_bot[0]
         
-        for row in processed_img[cali_area[0]:cali_area[1]]:
+        # Loop through all the rows that contain the road, append the averaged coordinates
+        # to avg_list (cf. find_row_average).        
+        for row in processed_img[road_top_bot[0]:road_top_bot[1]]:
+
+            # We need to use some exception catching as there could be rows 
+            # that don't have pixels of the road (broken segmentation).
             try:
-                avg_list.append((i, find_average_row(row,width,check_cond)))
+                avg_list.append((i, find_row_average(row)))
                 i += 1
             except:
                 pass
+
+        # Reduce the number of coordinates to smoothen the path.    
         avg_list = avg_list[::10]
-        avg_list.append((height-1,width/2))
-        nice = zip(avg_list,avg_list[1:])
-        # print(list(nice))
+
+        # Add turning angle to the screen
+        turning_angle = get_turning_angle(avg_list)
+        text_position = int(height/10),int(width/10)
+        cv2.putText(image,turning_angle,text_position,font,1,(255,255,255),1,cv2.LINE_AA)
+
+        # We also have to add our place in to the list .ie
+        # the bottom middle point.
+        avg_list.append(current_pos)
+        nice = zip(avg_list,avg_list[1:]) # Zip these to make pairs.
+
+        # Confer https://scikit-image.org/docs/stable/api/skimage.draw.html#skimage.draw.line
         for x, y in nice:
-            rr,cc = draw.line(int(x[0]),int(x[1]),int(y[0]),int(y[1]))
-            image[rr, cc] =  255
-    else:
-        rr,cc = draw.line(int(height-1),int(width/2),0,int(width/2))
-        image[rr, cc] =  255
-# except:
-        # pass
+            rr, cc = draw.line(
+                int(x[0]), int(x[1]), int(y[0]), int(y[1]))
+            image[rr, cc] = 255
+    else:        
+        cv2.putText(image,'No pavement detected',(height/2,width/2),font,3,(255,255,255),2, cv2.LINE_AA)
+        cv2
 
     return image
 
-# # List of constants
-
+''' Let's have some tests! '''
 img = cv2.imread(
     'Test Data\\00e9be89-00001005_train_color.png', 1) # Read image.
-
-processed = paint_path(img)
-
-# your code execution
-# e2 = cv.getTickCount()
-# time = (e2 - e1)/ cv.getTickFrequency()
-
-# start = timer()
-# img = cv2.imread(
-#     'Test Data\\00e9be89-00001005_train_color.png', 1) # Read image.
-# end = timer()
-# print(end - start)
-# height, width = int(img.shape[0]), int(img.shape[1])
-# lum_range[1], lum_range[2] = 89, 92  # CHANGE THIS FOR DIFFERENT TYPE OF LABELS.
-# det_val, trash_val = 90, 0
-
-# ''' Process the image. Refer to the process_image function for more details. '''
-# processed_img = process_image(img, cond, det_val, trash_val)
-# cali_top, cali_bot = find_cali_area(processed_img) # The rows of the image which have roads in it
-# ''' This single loop do the whole job '''
-# for x, y in paint_path(processed_img):
-#     processed_img[x, y] = 255
-''' The commented lines below are obsolete '''
-# # Let's work!
-# cali_distance = height-height/4  # By default, use height-height/4
-# target_x, target_y = find_dot(processed_img, int(cali_distance))
-# # DRAW THE CIRCLE!!!
-# cv2.circle(img, (target_x, target_y), 20, (255, 255, 255), -1)
-# # Now the arrow part...
-# bot_arrow_x, bot_arrow_y = int(width/2), height
-# target_proj = target_x, height
-# theta = math.pi/2
-# processed_img[paint_path(processed_img)]=255
-# if target_x != bot_arrow_x:
-#     print((target_proj[0], bot_arrow_x, target_proj[1], bot_arrow_y))
-#     print((target_x, bot_arrow_x, target_y, bot_arrow_y))
-#     # print(math.acos(mag(target_x, bot_arrow_x, target_y, bot_arrow_y)))
-#     theta = math.pi - math.acos(mag(target_proj[0], bot_arrow_x, target_proj[1], bot_arrow_y) /
-#                                 mag(target_x, bot_arrow_x, target_y, bot_arrow_y))
-# theta = math.acos(mag(mid,mid,cali_top,height) / mag(target[0],mid,target[1],height))
-# print(theta)
-# arrow_center = int(width-width/5), int(height/5)
-# arrow_length = 50
-# arrow_tip = int(arrow_center[0] + arrow_length*math.cos(theta)), \
-#     int(arrow_center[1] - arrow_length*math.sin(theta))
-# real_arrow_x = cv2.line(img, arrow_center, arrow_tip, (255, 255, 255), 2)
-# cv2.circle(img, arrow_center, 70, (255, 255, 255), 2)
-# # OBSOLETE. Find target for robot.
-# def __find_dot(image, cali):
-#     avg_list = []
-#     for row in image[cali:cali+20]:
-#         avg_list.append(find_average_row(row))
-#     return int(statistics.mean(avg_list)), int(cali)
+start = timer()
+processed = paint_path(img, (89,92))
+end = timer()
+print(end - start)
+# The time it takes to run this function should be around 12ms
 
 ''' Display the image '''
 cv2.imshow('ngon', processed)
 cv2.waitKey(0)
 # imgplot = plt.imshow(processed_img)
 # plt.show()
-
-# print((processed_img > lum_range[1]) & (processed_img < lum_range[2]))
