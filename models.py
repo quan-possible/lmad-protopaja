@@ -4,8 +4,25 @@ import torch.nn.functional as F
 from collections import OrderedDict
 
 class UNet(nn.Module):
+    """ U-Net for segmentation.
+        Model architecture has 4 levels of downsampling and 4 levels of
+        upsampling. The implemetation is similar to Pytorch documentation.
+    """
 
     def __init__(self, in_channels=3, out_channels=1, init_features=32, bias=True):
+        """ Initilization.
+
+            Args:
+                in_channels (int): Number of input channels
+                        (default 3 for color image)
+                out_channels (int): Number of output channels
+                        (should equal to the number of classes)
+                init_features (int): Number of kernels in the
+                        CNN block. Subsequent blocks are power of
+                        2 of this initial number of kernels.
+                bias (bool): If True, use bias parameters to CNN block,
+                        else don't use bias in CNN block.
+        """
         super(UNet, self).__init__()
 
         features = init_features
@@ -17,7 +34,7 @@ class UNet(nn.Module):
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.encoder4 = UNet._block(features * 4, features * 8, bias, name="enc4")
         self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
-  
+
         self.bottleneck = UNet._block(features * 8, features * 16, bias, name="bottleneck")
 
         self.upconv4 = nn.ConvTranspose2d(
@@ -42,6 +59,7 @@ class UNet(nn.Module):
         )
 
     def forward(self, x):
+        """ Forward Propagation. """
         enc1 = self.encoder1(x)
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
@@ -62,8 +80,6 @@ class UNet(nn.Module):
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
         output = F.log_softmax(self.conv(dec1), dim=1)
-        """print("\tIn Model: input size", x.size(),
-              "output size", output.size())"""
         return output
 
     @staticmethod

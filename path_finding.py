@@ -44,7 +44,7 @@ def paint_path(image, road_val_range):
 
     def mag(x1, x2, y1, y2):
         return math.sqrt((x2-x1)**2 + (y2-y1)**2)
-    
+
     def find_road_top_bot(image):
         height, width = int(image.shape[0]), int(image.shape[1])
         try:
@@ -68,7 +68,7 @@ def paint_path(image, road_val_range):
     # It selects only the pixel contains the value that fits the given brightness
     # of the road.
     def cond(image):
-        return ((image > road_val_range[0]) &  # road_val_range[1] and road_val_range[2] is the range of 
+        return ((image > road_val_range[0]) &  # road_val_range[1] and road_val_range[2] is the range of
                 (image < road_val_range[1]))   # brightness of road surface (the part of the picture we need).
         # Return False if its not the road
 
@@ -99,12 +99,12 @@ def paint_path(image, road_val_range):
 
         # Keep count of the row number (y-coordinate).
         i = road_top_bot[0]
-        
+
         # Loop through all the rows that contain the road, append the averaged coordinates
-        # to avg_list (cf. find_row_average).        
+        # to avg_list (cf. find_row_average).
         for row in processed_img[road_top_bot[0]:road_top_bot[1]]:
 
-            # We need to use some exception catching as there could be rows 
+            # We need to use some exception catching as there could be rows
             # that don't have pixels of the road (broken segmentation).
             try:
                 avg_list.append((i, find_row_average(row)))
@@ -112,7 +112,7 @@ def paint_path(image, road_val_range):
             except:
                 pass
 
-        # Reduce the number of coordinates to smoothen the path.    
+        # Reduce the number of coordinates to smoothen the path.
         avg_list = avg_list[::10]
 
         # Add turning angle to the screen
@@ -130,23 +130,9 @@ def paint_path(image, road_val_range):
             rr, cc = draw.line(
                 int(x[0]), int(x[1]), int(y[0]), int(y[1]))
             image[rr, cc] = 255
-    else:        
-        cv2.putText(image,'No pavement detected',(height/2,width/2),font,3,(255,255,255),2, cv2.LINE_AA)
+    else:
+        cv2.putText(image,'No pavement detected',(height//2,width//2),font,3,(255,255,255),2, cv2.LINE_AA)
         cv2
 
     return image
 
-''' Let's have some tests! '''
-img = cv2.imread(
-    'Test Data\\00e9be89-00001005_train_color.png', 1) # Read image.
-start = timer()
-processed = paint_path(img, (89,92))
-end = timer()
-print(end - start)
-# The time it takes to run this function should be around 12ms
-
-''' Display the image '''
-cv2.imshow('ngon', processed)
-cv2.waitKey(0)
-# imgplot = plt.imshow(processed_img)
-# plt.show()

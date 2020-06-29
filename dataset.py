@@ -102,12 +102,12 @@ labels = [
 
 class BaseDataset(Dataset):
     def __init__(self,
-                 new_size=None,  
+                 new_size=None,
                  crop_size=None,
                  random_resize=False,
                  is_flip=False,
                  to_tensor=True,
-                 mean=[0.485, 0.456, 0.406], 
+                 mean=[0.485, 0.456, 0.406],
                  std=[0.229, 0.224, 0.225]):
 
         self.new_size = new_size
@@ -122,37 +122,86 @@ class BaseDataset(Dataset):
 
     def __len__(self):
         return len(self.files)
-    
-    def input_transform(self, image):
+
+    def image_transform(self, image):
+        """ Convert image's datatype to np.float32 and normalize it.
+
+            Args:
+                image (2d-array like): Input image for transformation.
+
+            Return:
+                image (2d-array like): Transformed image.
+        """
         image = image.astype(np.float32)[:, :, ::-1]
         image = image / 255.0
         image -= self.mean
         image /= self.std
         return image
-    
+
     def label_transform(self, label):
+        """ Convert label's datatype to np.int64
+
+            Args:
+                label (2d-array like): Input label for transformation.
+
+            Return:
+                label (2d-array like): Transformed label.
+        """
         return np.array(label).astype('int64')
 
     def pad_image(self, image, h, w, size, padvalue):
+        """ Pad image with a pad value to desired size.
+
+            Args:
+                image (2d-array like): Input image for padding.
+                h (int):
+                w (int):
+                size (tuple):
+                padvalue (int): Value used for padding.
+
+            Return:
+                pad_image (2d-array like): Padded image.
+        """
         pad_image = image.copy()
         pad_h = max(size[0] - h, 0)
         pad_w = max(size[1] - w, 0)
         if pad_h > 0 or pad_w > 0:
-            pad_image = cv2.copyMakeBorder(image, 0, pad_h, 0, 
-                pad_w, cv2.BORDER_CONSTANT, 
+            pad_image = cv2.copyMakeBorder(image, 0, pad_h, 0,
+                pad_w, cv2.BORDER_CONSTANT,
                 value=padvalue)
         return pad_image
-    
+
     def rand_resize(self, image, label):
+        """ Randomly resize the image & label.
+            The new size should not be smaller than the cropsize.
+
+            Args:
+                image (2d-array like): Image.
+                label (2d-array like): Label.
+
+            Return:
+                image, label (tuple of 2d-array like):
+                Random resized tuple of (image, label)
+        """
         new_w = random.randint(self.crop_size[1]+1, self.new_size[0]+1)
         new_h = int(self.new_size[1] * new_w / self.new_size[0])+1
-        image = cv2.resize(image, (new_w, new_h), 
+        image = cv2.resize(image, (new_w, new_h),
                            interpolation = cv2.INTER_LINEAR)
-        label = cv2.resize(label, (new_w, new_h), 
+        label = cv2.resize(label, (new_w, new_h),
                            interpolation = cv2.INTER_AREA)
         return image, label
 
     def rand_crop(self, image, label):
+        """ Random crop image & label with the specified crop size (crop_size).
+
+            Args:
+                image (2d-array like): Image.
+                label (2d-array like): Label.
+
+            Return:
+                image, label (tuple of 2d-array like):
+                Random cropped tuple of (image, label)
+        """
         new_h, new_w = label.shape
         x = random.randint(0, new_w - self.crop_size[1])
         y = random.randint(0, new_h - self.crop_size[0])
@@ -161,77 +210,115 @@ class BaseDataset(Dataset):
         return image, label
 
     def rand_flip(self, image, label):
+        """ Random flip image & label.
+
+            Args:
+                image (2d-array like): Image.
+                label (2d-array like): Label.
+
+            Return:
+                image, label (tuple of 2d-array like):
+                Random flipped tuple of (image, label)
+        """
         flip = np.random.choice(2) * 2 - 1
         image = image[:, ::flip, :]
         label = label[:, ::flip]
         return image, label
 
     def resize(self, image, label=None):
-        image = cv2.resize(image, self.new_size, 
+        """ Resize the image & label to a specified size (new_size).
+
+            Args:
+                image (2d-array like): Image.
+                label (2d-array like): Label.
+
+            Return:
+                image, label (tuple of 2d-array like):
+                Resized tuple of (image, label)
+        """
+        image = cv2.resize(image, self.new_size,
                            interpolation = cv2.INTER_LINEAR)
-        if label is not None:
-            label = cv2.resize(label, self.new_size, 
-                           interpolation = cv2.INTER_AREA)
-        else:
+        if not label:
             return image
+
+        label = cv2.resize(label, self.new_size,
+                           interpolation = cv2.INTER_AREA)
         return image, label
 
     def gen_sample(self, image, label):
+        """ Generate data with specified procedure.
+
+            Args:
+                image (2d-array like): Image.
+                label (2d-array like): Label.
+
+            Return:
+                image, label (tuple of 2d-array like):
+                Generated tuple of (image, label)
+        """
+        # Resize the (image, label):
         if self.new_size:
             image, label = self.resize(image, label)
-            
+        # Random resize:
         if self.random_resize:
             image, label = self.rand_resize(image, label)
-
+        # Random_crop:
         if self.crop_size:
             image, label = self.rand_crop(image, label)
-        
+        # Flip:
         if self.is_flip:
             image, label = self.rand_flip(image, label)
-
+        # Transform:
         image = self.input_transform(image).transpose((2, 0, 1))
         label = self.label_transform(label)
-
+        # To tensor:
         if self.to_tensor:
             image, label = torch.from_numpy(image), torch.from_numpy(label)
-
+        # Done:
         return image, label
 
 class BDDSCAPES(BaseDataset):
-    def __init__(self, 
-                 root, 
-                 mode, 
+    def __init__(self,
+                 root=None,
+                 mode=None,
                  classes=None,
                  new_size=None,
                  crop_size=None,
                  random_resize=False,
                  is_flip=False,
                  to_tensor=True,
-                 mean=[0.485, 0.456, 0.406], 
+                 mean=[0.485, 0.456, 0.406],
                  std=[0.229, 0.224, 0.225]):
 
         super(BDDSCAPES, self).__init__(new_size, crop_size, random_resize,
                                   is_flip, to_tensor, mean, std,)
-
         self.root = root
         self.mode = mode
         self.classes = classes
-
+        # Read file paths:
         if root and mode:
             self.files = self.read_files()
-
+        # Prepare dictionaries for convenient convertion:
         self.trainId2name = {label.trainId: label.name for label in labels}
         self.trainId2color = {label.trainId: label.color for label in labels}
         self.trainId2color[255] = (0, 0, 0)
+        # Get new label mapping. This is different from the original trainId.
         self.label_mapping = self.get_label_mapping(classes)
 
-        """self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866, 1.0345, 
+        """self.class_weights = torch.FloatTensor([0.8373, 0.918, 0.866, 1.0345,
                                         1.0166, 0.9969, 0.9754, 1.0489,
-                                        0.8786, 1.0023, 0.9539, 0.9843, 
-                                        1.1116, 0.9037, 1.0865, 1.0955, 
+                                        0.8786, 1.0023, 0.9539, 0.9843,
+                                        1.1116, 0.9037, 1.0865, 1.0955,
                                         1.0865, 1.1529, 1.0507]).cuda()"""
-    
+
     def read_files(self):
+        """ Read and prepare file paths.
+
+            Args:
+
+            Return:
+                files (list of dictionary of image file path & label file path)
+        """
         files = []
         if 'test' in self.mode:
             imgs = sorted(glob.glob(os.path.join(self.root, 'images', self.mode, '*')))
@@ -248,21 +335,41 @@ class BDDSCAPES(BaseDataset):
                     'label': lab_path
                 })
         return files
-        
+
     def get_label_mapping(self, classes):
+        """ Get label mapping from original trainId to new Id.
+            The new Id match with the specified classes.
+
+            Args:
+                classes (list of string): List of classes that are considered
+                in the current model.
+
+            Return:
+                label_mapping (dictionary): Dictionary with key is original
+                trainId, value is the new trainId.
+        """
         label_mapping = dict()
         i = 0
         for trainId in set([label.trainId for label in labels]):
             if self.trainId2name[trainId] in classes:
-                label_mapping[trainId] = i 
+                label_mapping[trainId] = i
                 i += 1
             else:
                 label_mapping[trainId] = len(classes)
         return label_mapping
 
-        
-        
     def convert_label(self, label, inverse=False):
+        """ Original trainId <=> Custom trainId Convertion.
+
+            Args:
+                label (2d-array like): 2d array of trainId.
+                inverse (bool): If True, convert from custom trainId to
+                        original trainId. If False, convert original
+                        trainId to custom trainId.
+
+            Return:
+                label (2d-array like): Converted trainId.
+        """
         temp = label.copy()
         if inverse:
             for v, k in self.label_mapping.items():
@@ -271,8 +378,19 @@ class BDDSCAPES(BaseDataset):
             for k, v in self.label_mapping.items():
                 label[temp == k] = v
         return label
-    
+
     def label_to_color(self, label):
+        """ Convert trainId to designated color.
+            Labels have to be in original trainId.
+            The colorscheme follows CityScapes convention.
+
+            Args:
+                label (2d-array like): 2d array of trainId.
+
+            Return:
+                color (2d image): Segmented image with
+                        CityScapes color convention.
+        """
         label = self.convert_label(label, True)
         color = np.zeros((*label.shape, 3), dtype=np.uint8)
         for k, v in self.trainId2color.items():
@@ -280,6 +398,11 @@ class BDDSCAPES(BaseDataset):
         return color
 
     def __getitem__(self, index):
+        """ Get item with index.
+
+            Return:
+                image, label (tuple of 2d-array like)
+        """
         item = self.files[index]
         image = cv2.imread(item["image"], cv2.IMREAD_COLOR)
         size = image.shape
@@ -287,5 +410,5 @@ class BDDSCAPES(BaseDataset):
         label = self.convert_label(label)
 
         image, label = self.gen_sample(image, label)
-        
+
         return image, label
