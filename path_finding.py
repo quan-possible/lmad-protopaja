@@ -56,7 +56,7 @@ def paint_path(image, road_val_range):
 
     # Find the middle point of a slice of road contained in a row of the image.
     # It does so by finding the first and last element in the row that has the same
-    # brightness value of the road and calculate their average.
+    # brightness value of the road and calculate their avera
     def find_row_average(row):
         reversed_row = row[::-1]
         found_right = width-np.where(reversed_row == reclassifying_val[0])[0][0]-1
