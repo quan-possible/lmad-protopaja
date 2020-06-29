@@ -379,23 +379,31 @@ class BDDSCAPES(BaseDataset):
                 label[temp == k] = v
         return label
 
-    def label_to_color(self, label):
-        """ Convert trainId to designated color.
+    def convert_color(self, input, inverse=False):
+        """ Original trainId <=> Color Convertion.
             Labels have to be in original trainId.
             The colorscheme follows CityScapes convention.
 
             Args:
-                label (2d-array like): 2d array of trainId.
+                input (2d-array like): 2d array of trainId / RGB color.
+                inverse (bool): If True, convert from RGB color to original
+                        trainId. If False, convert original trainId to 
+                        custom trainId.
 
             Return:
-                color (2d image): Segmented image with
-                        CityScapes color convention.
+                output (2d image): Final convertion.
         """
-        label = self.convert_label(label, True)
-        color = np.zeros((*label.shape, 3), dtype=np.uint8)
-        for k, v in self.trainId2color.items():
-            color[label == k] = v
-        return color
+        if inverse:
+            output = np.zeros(input.shape[:2], dtype=np.uint8)
+            for v, k in self.trainId2color.items():
+                output[(input == k).sum(-1) == 3] = v
+            return output
+        else:
+            input = self.convert_label(input, True)
+            output = np.zeros((*input.shape, 3), dtype=np.uint8)
+            for k, v in self.trainId2color.items():
+                output[input == k] = v
+            return output
 
     def __getitem__(self, index):
         """ Get item with index.
