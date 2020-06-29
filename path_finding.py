@@ -26,7 +26,7 @@ def paint_path(image, road_val_range):
     Parameters
     ----------
     image : Image as numpy array
-    road_val_range : The brightness of the road
+    road_val_range : The brightness of the road.
 
     Returns
     -------
