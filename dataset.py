@@ -238,7 +238,7 @@ class BaseDataset(Dataset):
         """
         image = cv2.resize(image, self.new_size,
                            interpolation = cv2.INTER_LINEAR)
-        if not label:
+        if label is None:
             return image
 
         label = cv2.resize(label, self.new_size,
@@ -269,7 +269,7 @@ class BaseDataset(Dataset):
         if self.is_flip:
             image, label = self.rand_flip(image, label)
         # Transform:
-        image = self.input_transform(image).transpose((2, 0, 1))
+        image = self.image_transform(image).transpose((2, 0, 1))
         label = self.label_transform(label)
         # To tensor:
         if self.to_tensor:
@@ -277,7 +277,7 @@ class BaseDataset(Dataset):
         # Done:
         return image, label
 
-class BDDSCAPES(BaseDataset):
+class BCG(BaseDataset):
     def __init__(self,
                  root=None,
                  mode=None,
@@ -290,7 +290,7 @@ class BDDSCAPES(BaseDataset):
                  mean=[0.485, 0.456, 0.406],
                  std=[0.229, 0.224, 0.225]):
 
-        super(BDDSCAPES, self).__init__(new_size, crop_size, random_resize,
+        super(BCG, self).__init__(new_size, crop_size, random_resize,
                                   is_flip, to_tensor, mean, std,)
         self.root = root
         self.mode = mode
@@ -302,6 +302,7 @@ class BDDSCAPES(BaseDataset):
         self.trainId2name = {label.trainId: label.name for label in labels}
         self.trainId2color = {label.trainId: label.color for label in labels}
         self.trainId2color[255] = (0, 0, 0)
+        self.trainId2color.pop(-1)
         # Get new label mapping. This is different from the original trainId.
         self.label_mapping = self.get_label_mapping(classes)
 
@@ -350,12 +351,16 @@ class BDDSCAPES(BaseDataset):
         """
         label_mapping = dict()
         i = 0
-        for trainId in set([label.trainId for label in labels]):
-            if self.trainId2name[trainId] in classes:
-                label_mapping[trainId] = i
-                i += 1
-            else:
-                label_mapping[trainId] = len(classes)
+        if classes is None:
+            for trainId in set([label.trainId for label in labels]):
+                label_mapping[trainId] = trainId
+        else:
+            for trainId in set([label.trainId for label in labels]):
+                if self.trainId2name[trainId] in classes:
+                    label_mapping[trainId] = i
+                    i += 1
+                else:
+                    label_mapping[trainId] = len(classes)
         return label_mapping
 
     def convert_label(self, label, inverse=False):
@@ -399,7 +404,6 @@ class BDDSCAPES(BaseDataset):
                 output[(input == k).sum(-1) == 3] = v
             return output
         else:
-            input = self.convert_label(input, True)
             output = np.zeros((*input.shape, 3), dtype=np.uint8)
             for k, v in self.trainId2color.items():
                 output[input == k] = v

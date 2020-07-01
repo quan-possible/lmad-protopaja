@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     # Auxiliary dataset to use image processing functions:
     classes = ['road', 'sidewalk', 'terrain', 'person', 'car']
-    fn = BDDSCAPES(classes=classes, new_size=(320, 160))
+    fn = BCG(classes=classes, new_size=(320, 160))
 
     # Get available device:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
     # Initialize a camera stream:
     n = 1
-    cap = cv2.VideoCapture(2)
+    cap = cv2.VideoCapture(0)
 
     while(True):
         # Capture frame-by-frame
@@ -111,7 +111,8 @@ if __name__ == "__main__":
         # Compress fragments to a single frame:
         seg = glue_fragments(seg, n)
         # Convert to colored frame:
-        seg = fn.label_to_color(seg)
+        seg = fn.convert_label(seg, True)
+        seg = fn.convert_color(seg, False)
         seg = seg[:,:,::-1]
         # Draw possible path:
         seg = cv2.resize(seg, (720, 360), interpolation=cv2.INTER_AREA)
