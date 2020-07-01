@@ -130,7 +130,7 @@ class PathState(state.State):
         """
         # This list will store possible target locations for each agent.
         moves = []
-        step = 1
+        step = 50
         # Go over all agents/locations.
         # The index is the agent id so simply iterate over it.
         # for (r,c) in self.agents:
