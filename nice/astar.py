@@ -84,7 +84,7 @@ def astar(start_state, goaltest, h):
                 if ss not in g.keys() or g[ss] > (g[state] + action.cost):
                     g[ss] = g[state] + action.cost
                     predecessor[ss] = (state, action)
-                    Q.put((g[ss] + h(ss), ss))
+                    Q.put((g[ss] + 2*h(ss), ss))
                 if goaltest(ss):
                     min_g = g[ss]
                     goal = ss

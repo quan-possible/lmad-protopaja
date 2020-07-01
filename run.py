@@ -5,10 +5,10 @@ import numpy as np
 # Pytorch import:
 import torch
 import torch.nn.functional as F
+from nice import paint_path,path_state
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
 from models import *
-from path_finding import *
 
 def fragment(img, n, channel_first=False):
     """ Fragment image into smaller pieces.
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         seg = seg[:,:,::-1]
         # Draw possible path:
         seg = cv2.resize(seg, (720, 360), interpolation=cv2.INTER_AREA)
-        seg = paint_path(seg, (89, 92))
+        seg = paint_path.paint_path(seg, (89, 92))
 
 
         # Display the resulting frame

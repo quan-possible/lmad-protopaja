@@ -130,7 +130,7 @@ class PathState(state.State):
         """
         # This list will store possible target locations for each agent.
         moves = []
-        step = 50
+        step = 20
         # Go over all agents/locations.
         # The index is the agent id so simply iterate over it.
         # for (r,c) in self.agents:
@@ -138,7 +138,8 @@ class PathState(state.State):
         #     # move as a list.
         #     moves.append([])
       #   for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step)):
-        for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step),(-step,-step),(-step,step)):
+        for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step),
+                        (-step,-step),(-step,step)):
             # Calculate new location.
             (rt,ct) = (self.cursor[0]+dr,self.cursor[1]+dc)
             # Check if new location is in wall or outside.
