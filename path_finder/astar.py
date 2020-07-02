@@ -1,4 +1,10 @@
 import math
+
+# some_file.py
+import sys
+# insert at 1, 0 is the script path (or '' in REPL)
+sys.path.insert(1, 'path_finder')
+
 from queue import PriorityQueue
 from path_state import PathState
 from distance import Heuristic
@@ -84,7 +90,7 @@ def astar(start_state, goaltest, h):
                 if ss not in g.keys() or g[ss] > (g[state] + action.cost):
                     g[ss] = g[state] + action.cost
                     predecessor[ss] = (state, action)
-                    Q.put((g[ss] + 2*h(ss), ss))
+                    Q.put((g[ss] + 5*h(ss), ss))
                 if goaltest(ss):
                     min_g = g[ss]
                     goal = ss
@@ -95,7 +101,11 @@ def astar(start_state, goaltest, h):
             while last_state != start_state:
                 (last_state, last_action) = predecessor[last_state]
                 pi.append(last_action.translate)
-            return reversed(pi)
+
+            if len(pi) != 0:
+                return reversed(pi)
+            else:
+                return None
 
     return None
 

@@ -1,3 +1,8 @@
+# some_file.py
+import sys
+# insert at 1, 0 is the script path (or '' in REPL)
+sys.path.insert(1, 'path_finder')
+
 import cv2
 import math
 import numpy as np
@@ -84,34 +89,39 @@ def paint_path(image, road_val_range):
         grid_G = PathState(goal, processed_img)
         heuristic = Heuristic(grid_G)
 
-        nice = astar(grid_S,
+        plan1 = astar(grid_S,
                         lambda state: heuristic(state) < 21,
                         heuristic)
-        
-        def cond(cc):
-            wow = False
-            if cc != None:
-                if len(list(cc)) != 0:
-                    wow = True
-            return wow
 
+        condition = False
+        # print(list(plan))
 
-        # if cond(nice):
-        try:
-            nice = list(nice)
-            # print(nice[0][0])
-            first_target = current_pos,nice[0][0]
-            turning_angle = get_turning_angle(current_pos,nice[0][0])
+        def valid_plan(nice):
+            if nice != None:
+                wow = list(nice)
+                if len(wow) != 0:
+                    return wow
+
+        plan = valid_plan(plan1)
+        if plan != None:
+            # print(plan)
+            # # # print(list(plan1)) 
+            # # # print(plan)
+            # # plan = plan1
+            first = plan[0][0]
+            # print(len(plan))
+            first_target = (current_pos,first)
+            turning_angle = get_turning_angle(current_pos,first)
             text_position = int(height/10),int(width/10)
             cv2.putText(image,str(turning_angle),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
-            nice.insert(0,first_target)
+            plan.insert(0,first_target)
 
-            for x, y in nice:
+            for x, y in plan:
                 rr, cc = draw.line(
                     int(x[0]), int(x[1]), int(y[0]), int(y[1]))
                 image[rr, cc] = 255
-        # else:
-        except:
+        else:
+        # except:
             cv2.putText(image,'No path found!',(height//2,width//2), \
             font,1,(255,255,255),2, cv2.LINE_AA)
     else:
@@ -119,7 +129,6 @@ def paint_path(image, road_val_range):
         font,1,(255,255,255),2, cv2.LINE_AA)
 
     return image
-
 
 # ''' Let's have some tests! '''
 # img = cv2.imread(

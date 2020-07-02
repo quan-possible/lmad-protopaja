@@ -1,3 +1,8 @@
+# some_file.py
+import sys
+# insert at 1, 0 is the script path (or '' in REPL)
+sys.path.insert(1, 'path_finder')
+
 # Basic import:
 import cv2
 import sys
@@ -5,10 +10,12 @@ import numpy as np
 # Pytorch import:
 import torch
 import torch.nn.functional as F
-from nice import paint_path,path_state
+
+import paint_path
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
 from models import *
+
 
 def fragment(img, n, channel_first=False):
     """ Fragment image into smaller pieces.
@@ -86,7 +93,7 @@ if __name__ == "__main__":
 
     # Initialize a camera stream:
     n = 1
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(2)
 
     while(True):
         # Capture frame-by-frame
