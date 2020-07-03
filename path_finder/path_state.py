@@ -1,10 +1,10 @@
-from dataclasses import dataclass # Use dataclass to create hash, eq, and order.
-import itertools # For creating combinations.
 # Importing the folder
 import sys
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
 
+from dataclasses import dataclass # Use dataclass to create hash, eq, and order.
+import itertools # For creating combinations.
 # Local imports.
 import state 
 from action import Action

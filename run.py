@@ -7,6 +7,8 @@ sys.path.insert(1, 'path_finder')
 import cv2
 import sys
 import numpy as np
+import pyrealsense2 as rs
+
 # Pytorch import:
 import torch
 import torch.nn.functional as F
@@ -69,7 +71,7 @@ if __name__ == "__main__":
 
     # Auxiliary dataset to use image processing functions:
     classes = ['road', 'sidewalk', 'terrain', 'person', 'car']
-    fn = BCG(classes=classes, new_size=(320, 160))
+    fn = BCG(classes=classes, new_size=(320,160))
 
     # Get available device:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -92,16 +94,41 @@ if __name__ == "__main__":
     #########################################
 
     # Initialize a camera stream:
+    # Configure depth and color streams
+    pipeline = rs.pipeline()
+    config = rs.config()
+    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+
+    # Start streaming
+    pipeline.start(config)
+
     n = 1
     cap = cv2.VideoCapture(2)
 
     while(True):
         # Capture frame-by-frame
-        ret, frame = cap.read()
+        frames = pipeline.wait_for_frames()
+        depth_frame = frames.get_depth_frame()
+        color_frame = frames.get_color_frame()
+        color_image = np.asanyarray(color_frame.get_data())
+        depth_image = np.asanyarray(depth_frame.get_data())
+
+        if not depth_frame or not color_frame:
+            continue
+
+        # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
+        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
         # Our operations on the frame come here
         # Resize camera frame:
-        seg = fn.resize(frame)
+        seg = fn.resize(color_image)
+        dep = fn.resize(depth_image)
+
+        # Convert images to numpy arrays
+
+        # print(dep.shape)
+
         # Normalize image frame:
         seg = fn.image_transform(seg)
         # Convert np.array to torch tensor and push to device:
@@ -122,12 +149,12 @@ if __name__ == "__main__":
         seg = fn.convert_color(seg, False)
         seg = seg[:,:,::-1]
         # Draw possible path:
-        seg = cv2.resize(seg, (720, 360), interpolation=cv2.INTER_AREA)
+        seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
         seg = paint_path.paint_path(seg, (89, 92))
-
+        output = np.hstack((seg, depth_colormap))
 
         # Display the resulting frame
-        cv2.imshow('frame',seg)
+        cv2.imshow('frame',output)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
