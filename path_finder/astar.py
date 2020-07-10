@@ -1,15 +1,14 @@
-import math
-
-# some_file.py
+# Append 'path_finder' folder to the directory
 import sys
-# insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
-
+# Basic imports
+from math import inf
+# Local imports
 from queue import PriorityQueue
-from path_state import PathState
+from path_state import *
 from distance import Heuristic
 import action
-from math import inf
+
 
 
 def astar(start_state, goaltest, h):
@@ -90,7 +89,7 @@ def astar(start_state, goaltest, h):
                 if ss not in g.keys() or g[ss] > (g[state] + action.cost):
                     g[ss] = g[state] + action.cost
                     predecessor[ss] = (state, action)
-                    Q.put((g[ss] + 5*h(ss), ss))
+                    Q.put((g[ss] + 2*h(ss), ss))
                 if goaltest(ss):
                     min_g = g[ss]
                     goal = ss

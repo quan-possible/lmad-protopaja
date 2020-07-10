@@ -12,7 +12,7 @@ class Heuristic():
 
 def euclidean(u,v):
     """ 
-    Manhattan distance between two points. 
+    Euclidean distance between two points. 
     
     Helper function.
     
@@ -24,7 +24,7 @@ def euclidean(u,v):
     Returns
     -------
     int
-       Manhattan distance.
+       Euclidean distance.
     """
     x1,y1 = u
     x2,y2 = v

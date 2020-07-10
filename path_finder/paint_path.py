@@ -1,14 +1,15 @@
-# some_file.py
+# Append 'path_finder' folder to the directory
 import sys
-# insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
-
+# Basic imports
 import cv2
 import math
 import numpy as np
-from path_state import PathState
+# Local imports
+from path_state import *
 from distance import Heuristic
 from astar import astar
+# External imports
 from timeit import default_timer as timer
 from skimage import draw
 
@@ -38,11 +39,7 @@ def paint_path(image, road_val_range):
     font = cv2.FONT_HERSHEY_SIMPLEX
     height, width = int(image.shape[0]), int(image.shape[1]-1)
     current_pos = height-1,width/2
-    # This is the substitute for the road_val_range.
-    # When the pixels where the roads appear is determined,
-    # they are assigned to the first value of the tuple.
-    # Every other pixels are assigned to the latter value.
-    reclassifying_val = 90, 0
+
 
     def process_image(image,cond):
         reclassifying_val = 90, 0
@@ -104,12 +101,7 @@ def paint_path(image, road_val_range):
 
         plan = valid_plan(plan1)
         if plan != None:
-            # print(plan)
-            # # # print(list(plan1)) 
-            # # # print(plan)
-            # # plan = plan1
             first = plan[0][0]
-            # print(len(plan))
             first_target = (current_pos,first)
             turning_angle = get_turning_angle(current_pos,first)
             text_position = int(height/10),int(width/10)

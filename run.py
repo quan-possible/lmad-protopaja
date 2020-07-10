@@ -17,6 +17,7 @@ import paint_path
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
 from models import *
+from obstacle_detection import *
 
 
 def fragment(img, n, channel_first=False):
@@ -96,26 +97,42 @@ if __name__ == "__main__":
     # Initialize a camera stream:
     # Configure depth and color streams
     pipeline = rs.pipeline()
+    
     config = rs.config()
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+    width,height = 640,480
 
     # Start streaming
-    pipeline.start(config)
+    profile = pipeline.start(config)
 
+    # Getting the depth sensor's depth scale (see rs-align example for explanation)
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_scale = depth_sensor.get_depth_scale()
+    print("Depth Scale is: " , depth_scale)
+
+    # Create an align object
+    # rs.align allows us to perform alignment of depth frames to others frames
+    # The "align_to" is the stream type to which we plan to align depth frames.
+    align_to = rs.stream.color
+    align = rs.align(align_to)
     n = 1
-    cap = cv2.VideoCapture(2)
 
     while(True):
         # Capture frame-by-frame
         frames = pipeline.wait_for_frames()
-        depth_frame = frames.get_depth_frame()
-        color_frame = frames.get_color_frame()
-        color_image = np.asanyarray(color_frame.get_data())
-        depth_image = np.asanyarray(depth_frame.get_data())
 
+        aligned_frames = align.process(frames)
+
+        depth_frame = aligned_frames.get_depth_frame()
+        color_frame = aligned_frames.get_color_frame()
+        
+        # Validate that both frames are valid
         if not depth_frame or not color_frame:
             continue
+
+        color_image = np.asanyarray(color_frame.get_data())
+        depth_image = np.asanyarray(depth_frame.get_data())
 
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
@@ -124,10 +141,6 @@ if __name__ == "__main__":
         # Resize camera frame:
         seg = fn.resize(color_image)
         dep = fn.resize(depth_image)
-
-        # Convert images to numpy arrays
-
-        # print(dep.shape)
 
         # Normalize image frame:
         seg = fn.image_transform(seg)
@@ -150,16 +163,15 @@ if __name__ == "__main__":
         seg = seg[:,:,::-1]
         # Draw possible path:
         seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
-        seg = paint_path.paint_path(seg, (89, 92))
-        output = np.hstack((seg, depth_colormap))
-
+        # seg = paint_path.paint_path(seg, (89, 92))
+        output = detect_obstacle(depth_image, seg, depth_scale)
+        # ngon = np.hstack((output,color_image))
         # Display the resulting frame
         cv2.imshow('frame',output)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     # When everything done, release the capture
-    cap.release()
     cv2.destroyAllWindows()
 
 

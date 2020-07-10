@@ -19,12 +19,15 @@ class Action:
        End location.
     cost : float
        Cost associated with action.
+    translate : pair of State
+       Tuple of Start and End locations.         
     """
 
     # Dataclass attributes
     source : Any
     target : Any
     cost : float
+    translate : (Any,Any)
 
     def __init__(self, source, target, cost = 1):
         """

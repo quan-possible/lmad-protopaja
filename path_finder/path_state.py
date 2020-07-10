@@ -13,30 +13,31 @@ import cv2
 import math
 import numpy as np
 
+# This is the substitute for the road_val_range.
+# When the pixels where the roads appear is determined,
+# they are assigned to the first value of the tuple.
+# Every other pixels are assigned to the latter value.
+reclassifying_val = 90,0
+
+
+
 @dataclass(eq=True, order=True, unsafe_hash=True)
 class PathState(state.State):
     """
-    This is Multi-Agent Path Planning (MAPP) in rectangular grids.
+    This is Path Planning system for a robot given a picture.
 
-    The grid consists of rows and columns. Each coordinate location is either
-    empty, or contains a wall, or an agent. Agents are numbered 0 ... N-1.
+    The picture is a matrix consisting of rows and columns. The coordinates are
+    determined as road or not road based on its brightness value. (90 is road)
     
-    Agents may stay in their location or move N,S,E,W in the grid (but not over
-    the 'edge', in to a wall location, or into a space occupied by another 
-    agent).
-    Crucially, all agents may move simultaneously. See `successors` for more on
-    the specifics.
+    The path may move N,NW,NE,S,E,W in the picture (but not to anywhere that is not the road).
 
-    The cost of a move is the sum of distances for all agents moving.
+    The cost of a move is dependent on the direction
 
-    Simultaneous movement has the potential to create a huge number of successor
-    states, with the potential to overwhelm e.g. BFS. This class is designed as
-    an example used with A-star search.
 
     Attributes
     ----------
-    nrows : int > 0
-       Number of rows in grid.
+    processed_img : ndarray
+       The image already processed (coverted to grayscale and )
     ncols : int > 0
        Number of columns in grid.
     agents : tuple of (int,int) pairs
@@ -83,11 +84,8 @@ class PathState(state.State):
            If agent locations are on walls, outside the grid, or not unique.
         """
         self.processed_img = processed_img
-        self.reclassifying_val = 90
-      # #   print(location)
-      #   Check input while copying agents
-        if not wall_mech(self.processed_img,location,self.reclassifying_val):
-            raise ValueError(f" Fuck you! ")
+        if not blocked(self.processed_img,location,reclassifying_val[0]):
+            raise ValueError(f" Not on the road! ")
         self.cursor = location
       #   print(self.cursor)
 
@@ -144,19 +142,15 @@ class PathState(state.State):
         #     moves.append([])
       #   for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step)):
         for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step),
-                        (-step,-step),(-step,step)):
+                        (-step,-step),(-step,step),(step,-step), (-step,step)):
             # Calculate new location.
             (rt,ct) = (self.cursor[0]+dr,self.cursor[1]+dc)
             # Check if new location is in wall or outside.
             # Do not check move to occupied space just yet.
-            if wall_mech(self.processed_img,(rt,ct),self.reclassifying_val):
+            if blocked(self.processed_img,(rt,ct),reclassifying_val[0]):
                moves.append((rt,ct))
-        # Now we have a list of possible target locations for each agent.
-        # As every agent can make one move between one state and the next, the
-        # next thing to do is to calculate all possible products of moves,
-        # (i.e. all combinations where one move is picked for each agent).
-        # If the combination contains no place swaps and no shared locations,
-        # it is a valid action.
+        # Now we have a list of possible target locations for the next move.
+        # The next thing to do is appending all of them to the list of successors.
         succ = []
         for location in moves:
             cost = euclidean(self.cursor,location)
@@ -164,11 +158,26 @@ class PathState(state.State):
                         PathState(location, processed_img = self.processed_img)))
         return succ
 
+""" 
+Determine if the given point is outside the road.
 
-def wall_mech(image,given_point,reclassifying_val):
+Helper function.
+
+Parameters
+----------
+image: numpy array
+   Reference Image
+given_point: pair of float
+reclassifying_val: pair of int
+   Road value
+
+Returns
+-------
+Boolean
+
+"""
+def blocked(image,given_point,ref_val):
    if (given_point[0] in range(0,image.shape[0])) and (given_point[1] in range(0,image.shape[1])):
-      # print('concac')
-      return image[given_point[0],given_point[1]] == reclassifying_val
+      return image[given_point[0],given_point[1]] == ref_val
    else:
-      # raise ValueError(f" Fuck you! ")
       return False
