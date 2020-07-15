@@ -122,18 +122,19 @@ def paint_path(image, road_val_range):
 
     return image
 
-# ''' Let's have some tests! '''
-# img = cv2.imread(
-#     'Test Data\\00e9be89-00001005_train_color.png', 1) # Read image.
-# start = timer()
-# processed = paint_path(img, (89,92))
-# end = timer()
-# print(end - start)
-# # The time it takes to run this function should be around 12ms
+''' Let's have some tests! '''
+if __name__ == "__main__":
+    img = cv2.imread(
+        'Test Data\\00e9be89-00001005_train_color.png', 1) # Read image.
+    start = timer()
+    processed = paint_path(img, (89,92))
+    end = timer()
+    print(end - start)
+    # The time it takes to run this function should be around 12ms
 
-# ''' Display the image '''
-# cv2.imshow('ngon', processed)
-# cv2.waitKey(0)
+    ''' Display the image '''
+    cv2.imshow('ngon', processed)
+    cv2.waitKey(0)
     
 
 

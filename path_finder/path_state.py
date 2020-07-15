@@ -9,6 +9,7 @@ import itertools # For creating combinations.
 import state 
 from action import Action
 from distance import euclidean
+import pyrealsense2
 import cv2
 import math
 import numpy as np

@@ -277,6 +277,98 @@ class BaseDataset(Dataset):
         # Done:
         return image, label
 
+class Drivable(BaseDataset):
+    def __init__(self,
+                 root=None,
+                 mode=None,
+                 new_size=None,
+                 crop_size=None,
+                 random_resize=False,
+                 is_flip=False,
+                 to_tensor=True,
+                 mean=[0.485, 0.456, 0.406],
+                 std=[0.229, 0.224, 0.225]):
+
+        super(Drivable, self).__init__(new_size, crop_size, random_resize,
+                                  is_flip, to_tensor, mean, std,)
+        self.root = root
+        self.mode = mode
+        # Color convert mapping:
+        self.id2color = {
+            0: (0, 0, 0),
+            1: (255, 0, 0),
+            2: (0, 255, 255)
+        }
+        # Read file paths:
+        if root and mode:
+            self.files = self.read_files()
+
+    def read_files(self):
+        """ Read and prepare file paths.
+
+            Args:
+
+            Return:
+                files (list of dictionary of image file path & label file path)
+        """
+        files = []
+        if 'test' in self.mode:
+            imgs = sorted(glob.glob(os.path.join(self.root, 'images', self.mode, '*')))
+            for img_path in imgs:
+                files.append({
+                    'images': img_path
+                })
+        else:
+            imgs = sorted(glob.glob(os.path.join(self.root, 'images', self.mode, '*')))
+            labs = sorted(glob.glob(os.path.join(self.root, 'labels', self.mode, '*')))
+            for (img_path, lab_path) in zip(imgs, labs):
+                files.append({
+                    'image': img_path,
+                    'label': lab_path
+                })
+        return files
+
+    def convert_color(self, input, inverse=False):
+        """ Original trainId <=> Color Convertion.
+            Labels have to be in original trainId.
+            The colorscheme follows CityScapes convention.
+
+            Args:
+                input (2d-array like): 2d array of trainId / RGB color.
+                inverse (bool): If True, convert from RGB color to original
+                        trainId. If False, convert original trainId to 
+                        custom trainId.
+
+            Return:
+                output (2d image): Final convertion.
+        """
+        if inverse:
+            output = np.zeros(input.shape[:2], dtype=np.uint8)
+            for v, k in self.id2color.items():
+                output[(input == k).sum(-1) == 3] = v
+            return output
+        else:
+            output = np.zeros((*input.shape, 3), dtype=np.uint8)
+            for k, v in self.id2color.items():
+                output[input == k] = v
+            return output
+
+    def __getitem__(self, index):
+        """ Get item with index.
+
+            Return:
+                image, label (tuple of 2d-array like)
+        """
+        item = self.files[index]
+        image = cv2.imread(item["image"], cv2.IMREAD_COLOR)
+        size = image.shape
+        label = cv2.imread(item["label"], cv2.IMREAD_GRAYSCALE)
+        label = self.convert_label(label)
+
+        image, label = self.gen_sample(image, label)
+
+        return image, label
+    
 class BCG(BaseDataset):
     def __init__(self,
                  root=None,
