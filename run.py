@@ -61,20 +61,16 @@ if __name__ == "__main__":
     #########################################
 
     # Auxiliary dataset to use image processing functions:
-    classes = ['road', 'sidewalk', 'terrain', 'person', 'car']
-    fn = BCG(classes=classes, new_size=(320, 160))
-
+    fn = Drivable(new_size=(448, 224))
     # Get available device:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Initialize a model:
-    unet = nn.DataParallel(
-        UNet(in_channels=3,
-             out_channels=len(classes)+1,
-             init_features=16,
-             bias=True)
-    )
+    unet = UNet(in_channels=3, 
+                out_channels=3, 
+                init_features=16)
+    #unet = nn.DataParallel(unet)
     # Load pretrained parameters:
-    unet.load_state_dict(torch.load('./saved_models/25.06.20_unet_61_val_nll=-0.20364859596888224.pth', map_location='cpu'))
+    unet.load_state_dict(torch.load('../saved_models/15.07.20_unet_7_val_nll=-0.1571.pt', map_location='cpu'))
     # Load model to current device:
     unet.to(device)
     # Toggle evaluation mode:
@@ -94,9 +90,9 @@ if __name__ == "__main__":
 
         # Our operations on the frame come here
         # Resize camera frame:
-        seg = fn.resize(frame)
+        frame = fn.resize(frame)
         # Normalize image frame:
-        seg = fn.image_transform(seg)
+        seg = fn.image_transform(frame)
         # Convert np.array to torch tensor and push to device:
         seg = torch.from_numpy(seg).to(device)
         # Divide image frame into fragments to utilize GPUs:
@@ -111,16 +107,16 @@ if __name__ == "__main__":
         # Compress fragments to a single frame:
         seg = glue_fragments(seg, n)
         # Convert to colored frame:
-        seg = fn.convert_label(seg, True)
         seg = fn.convert_color(seg, False)
         seg = seg[:,:,::-1]
-        # Draw possible path:
         seg = cv2.resize(seg, (720, 360), interpolation=cv2.INTER_AREA)
-        seg = paint_path(seg, (89, 92))
+        frame = cv2.resize(frame, (720, 360), interpolation=cv2.INTER_LINEAR)
+        #seg = paint_path(seg, (89, 92))
+        out = np.hstack((frame, seg))
 
 
         # Display the resulting frame
-        cv2.imshow('frame',seg)
+        cv2.imshow('frame',out)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
