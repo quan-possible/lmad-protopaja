@@ -20,7 +20,7 @@ rng.seed(12345)
 # Streaming loop
 
 
-def detect_obstacle(depth_image, color_image, depth_scale,\
+def detect_obstacle(depth_image, color_image, Measure,\
                         clipping_distance_in_meters=2):
 
     width,height = 640,480
@@ -28,6 +28,7 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
     text_position = int(height/10),int(width/10)
     # We will be removing the background of objects more than
     #  clipping_distance_in_meters meters away
+    depth_scale = Measure.depth_scale
     clipping_distance = clipping_distance_in_meters / depth_scale
     threshold = 0.1 / depth_scale
     
@@ -55,6 +56,24 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
     img = cv2.erode(img, kernel, 1)
 
     contours,_ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    
+    # Filter out contours that have 0 depth-value  
+    filtered_contours = []
+    for c in contours:
+        daCon = list(tuple(reversed(item)) for sublist in c for item in sublist)
+        filtering = list(filter(lambda x: depth_image[x] > 0, daCon))
+        filtered_contours.append(filtering)
+
+    distance = []
+    for c in filtered_contours:
+        # determine the most extreme points along the contour
+        # resized = c[::2]
+        all_dist = list(map(lambda x: depth_image[x],c))
+        if all_dist:
+            distance.append(mean(all_dist))
+                
+    if filtered_contours and distance:
+        cv2.putText(color_image,str(min(distance)),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
 
     # Approximate contours to polygons + get bounding rects and circles
     contours_poly = [None]*len(contours)
@@ -64,29 +83,13 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
     for i, c in enumerate(contours):
         contours_poly[i] = cv2.approxPolyDP(c, 3, True)
         boundRect[i] = cv2.boundingRect(contours[i])
-        # centers[i], radius[i] = cv2.minEnclosingCircle(contours_poly[i])
-
-    # drawing = np.zeros(((height,width), 3), dtype=np.uint8)
-    distance = []
-    for c in contours:
-        # determine the most extreme points along the contour
-        # resized = c[::2]
-        wow = list(tuple(reversed(item)) for sublist in c for item in sublist)
-        test = map(lambda x: depth_image[x], wow)
-        test = list(filter(lambda x: x > 0,test))
-        if test:
-            distance.append(mean(test))
-                
-    if contours and distance:
-        cv2.putText(color_image,str(min(distance)),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
-
 
     # Draw polygonal contour + bonding rects + circles
     for i in range(len(contours)):
         color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
         cv2.drawContours(color_image, contours_poly, i, color)
 
-    return color_image
+    return color_image,filtered_contours
 
 if __name__ == "__main__":
     # Create a pipeline
@@ -138,7 +141,7 @@ if __name__ == "__main__":
             depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
-            output = detect_obstacle(depth_image, color_image, depth_scale,\
+            output,contours = detect_obstacle(depth_image, color_image, depth_scale,\
                             clipping_distance_in_meters)
 
             cv2.imshow('ngon', output)
@@ -149,3 +152,6 @@ if __name__ == "__main__":
                 break
     finally:
         pipeline.stop()
+
+
+        

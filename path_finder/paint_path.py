@@ -9,11 +9,12 @@ import numpy as np
 from path_state import *
 from distance import Heuristic
 from astar import astar
+from calc_dist import Measure
 # External imports
 from timeit import default_timer as timer
 from skimage import draw
 
-def paint_path(image, road_val_range):
+def paint_path(image, road_val_range, Measure, contours):
 
     """
 
@@ -39,7 +40,6 @@ def paint_path(image, road_val_range):
     font = cv2.FONT_HERSHEY_SIMPLEX
     height, width = int(image.shape[0]), int(image.shape[1]-1)
     current_pos = height-1,width/2
-
 
     def process_image(image,cond):
         reclassifying_val = 90, 0
@@ -82,16 +82,16 @@ def paint_path(image, road_val_range):
     if find_road_top_bot(processed_img) != None:
         goal,start = find_road_top_bot(processed_img)
         ''' Let's go!!! '''
+        
         grid_S = PathState(start,processed_img)
         grid_G = PathState(goal, processed_img)
-        heuristic = Heuristic(grid_G)
+        heuristic = Heuristic(grid_G,measure)
 
         plan1 = astar(grid_S,
                         lambda state: heuristic(state) < 21,
                         heuristic)
 
         condition = False
-        # print(list(plan))
 
         def valid_plan(nice):
             if nice != None:
@@ -121,6 +121,10 @@ def paint_path(image, road_val_range):
         font,1,(255,255,255),2, cv2.LINE_AA)
 
     return image
+
+
+
+
 
 ''' Let's have some tests! '''
 if __name__ == "__main__":

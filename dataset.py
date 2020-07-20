@@ -132,10 +132,8 @@ class BaseDataset(Dataset):
             Return:
                 image (2d-array like): Transformed image.
         """
-        image = image.astype(np.float32)[:, :, ::-1]
-        image = image / 255.0
-        image -= self.mean
-        image /= self.std
+        image = (image / 255.0).astype(np.float32)
+        image = np.expand_dims(image, 0)
         return image
 
     def label_transform(self, label):
@@ -221,7 +219,7 @@ class BaseDataset(Dataset):
                 Random flipped tuple of (image, label)
         """
         flip = np.random.choice(2) * 2 - 1
-        image = image[:, ::flip, :]
+        image = image[:, ::flip]
         label = label[:, ::flip]
         return image, label
 
@@ -269,7 +267,7 @@ class BaseDataset(Dataset):
         if self.is_flip:
             image, label = self.rand_flip(image, label)
         # Transform:
-        image = self.image_transform(image).transpose((2, 0, 1))
+        image = self.image_transform(image)
         label = self.label_transform(label)
         # To tensor:
         if self.to_tensor:
@@ -360,13 +358,9 @@ class Drivable(BaseDataset):
                 image, label (tuple of 2d-array like)
         """
         item = self.files[index]
-        image = cv2.imread(item["image"], cv2.IMREAD_COLOR)
-        size = image.shape
+        image = cv2.imread(item["image"], cv2.IMREAD_GRAYSCALE)
         label = cv2.imread(item["label"], cv2.IMREAD_GRAYSCALE)
-        label = self.convert_label(label)
-
         image, label = self.gen_sample(image, label)
-
         return image, label
     
 class BCG(BaseDataset):

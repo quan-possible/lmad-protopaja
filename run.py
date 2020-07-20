@@ -8,12 +8,13 @@ import cv2
 import sys
 import numpy as np
 import pyrealsense2 as rs
+from calc_dist import Measure
 
 # Pytorch import:
 import torch
 import torch.nn.functional as F
 
-import paint_path
+from paint_path import paint_path
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
 from models import *
@@ -162,9 +163,11 @@ if __name__ == "__main__":
         seg = fn.convert_color(seg, False)
         seg = seg[:,:,::-1]
         # Draw possible path:
+        
         seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
-        # seg = paint_path.paint_path(seg, (89, 92))
-        output = detect_obstacle(depth_image, seg, depth_scale)
+        daMeasure = Measure(depth_frame,color_frame,depth_scale)
+        seg,obstacles = detect_obstacle(depth_image, seg, daMeasure, contours)
+        output = paint_path(seg, (89, 92), daMeasure, obstacles)
         # ngon = np.hstack((output,color_image))
         # Display the resulting frame
         cv2.imshow('frame',output)

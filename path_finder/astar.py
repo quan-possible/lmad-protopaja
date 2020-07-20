@@ -6,7 +6,7 @@ from math import inf
 # Local imports
 from queue import PriorityQueue
 from path_state import *
-from distance import Heuristic
+from heuristics import Heuristic
 import action
 
 
