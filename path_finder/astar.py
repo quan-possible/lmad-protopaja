@@ -6,7 +6,7 @@ from math import inf
 # Local imports
 from queue import PriorityQueue
 from path_state import *
-from heuristics import Heuristic
+from distance import Heuristic
 import action
 
 
@@ -56,24 +56,6 @@ def astar(start_state, goaltest, h):
     # And gotten as (prio,state) = Q.get()
 
     Q = PriorityQueue()
-
-    # TASK
-    # ---------------------------------
-    # Complete the A* star implementation.
-    # Some variables have already been declared above (others may be needed
-    # depending on your implementation).
-    # Remember to return the plan (list of Actions).
-    #
-    # You can look at bfs.py to see how a compatible BFS algorithm can be
-    # implemented.
-    #
-    # The A* algorithm can be found in the MyCourses material.
-    #
-    # Take care that you don't implement the GBFS algorithm by mistake:
-    #  note that you should return a solution only when you *know* it is
-    #  optimal (how?)
-    #
-    # Good luck!
 
     Q.put((h(start_state), start_state))
     min_g = inf

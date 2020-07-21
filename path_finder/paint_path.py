@@ -7,14 +7,15 @@ import math
 import numpy as np
 # Local imports
 from path_state import *
-from distance import Heuristic
+from distance import euclidean
 from astar import astar
-from calc_dist import Measure
+from depth_distance import Measure
 # External imports
 from timeit import default_timer as timer
 from skimage import draw
+import pyrealsense2
 
-def paint_path(image, road_val_range, Measure, contours):
+def paint_path(image, road_val_range, Measure):
 
     """
 
@@ -81,10 +82,11 @@ def paint_path(image, road_val_range, Measure, contours):
 
     if find_road_top_bot(processed_img) != None:
         goal,start = find_road_top_bot(processed_img)
+        blocked = Measure.blocked
+        measure = Measure.measure
         ''' Let's go!!! '''
-        
-        grid_S = PathState(start,processed_img)
-        grid_G = PathState(goal, processed_img)
+        grid_S = PathState(start,processed_img,blocked)
+        grid_G = PathState(goal, processed_img,blocked)
         heuristic = Heuristic(grid_G,measure)
 
         plan1 = astar(grid_S,
@@ -139,6 +141,71 @@ if __name__ == "__main__":
     ''' Display the image '''
     cv2.imshow('ngon', processed)
     cv2.waitKey(0)
+
+
+if __name__ == "__main__":
+    # Create a pipeline
+    pipeline = rs.pipeline()
+    bag = '20200716_170459.bag'
+
+    #Create a config and configure the pipeline to stream
+    #  different resolutions of color and depth streams
+    config = rs.config()
+    config.enable_device_from_file(bag, False)
+    config.enable_all_streams()
+    width,height = 640,480
+
+    profile = self.pipeline.start(config)
+    device = profile.get_device()
+    playback = device.as_playback()
+    playback.set_real_time(True)
+
+    # Getting the depth sensor's depth scale (see rs-align example for explanation)
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_scale = depth_sensor.get_depth_scale()
+    print("Depth Scale is: " , depth_scale)
+
+    # We will be removing the background of objects more than
+    #  clipping_distance_in_meters meters away
+    clipping_distance_in_meters = 2 #2 meter
+    clipping_distance = clipping_distance_in_meters / depth_scale
+
+    # Create an align object
+    # rs.align allows us to perform alignment of depth frames to others frames
+    # The "align_to" is the stream type to which we plan to align depth frames.
+    align_to = rs.stream.color
+    align = rs.align(align_to)
+
+    try:
+        while True:
+            # Get frameset of color and depth
+            frames = pipeline.wait_for_frames()
+            # frames.get_depth_frame() is a 640x360 depth image
+
+            # Align the depth frame to color frame
+            aligned_frames = align.process(frames)
+
+            # Get aligned frames
+            depth_frame = aligned_frames.get_depth_frame() # depth_frame is a 640x480 depth image
+            color_frame = aligned_frames.get_color_frame()
+
+            # Validate that both frames are valid
+            if not depth_frame or not color_frame:
+                continue
+
+            depth_image = np.asanyarray(depth_frame.get_data())
+            color_image = np.asanyarray(color_frame.get_data())
+            daMeasure = Measure(depth_frame,color_frame,depth_scale)
+            output,contours = detect_obstacle(depth_image, color_image, depth_scale)
+
+            cv2.imshow('ngon', output)
+            key = cv2.waitKey(1)
+            # Press esc or 'q' to close the image window
+            if key & 0xFF == ord('q') or key == 27:
+                cv2.destroyAllWindows()
+                break
+    finally:
+        pipeline.stop()
     
 
 

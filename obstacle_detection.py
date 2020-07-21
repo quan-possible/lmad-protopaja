@@ -20,7 +20,7 @@ rng.seed(12345)
 # Streaming loop
 
 
-def detect_obstacle(depth_image, color_image, Measure,\
+def detect_obstacle(depth_image, color_image, depth_scale,\
                         clipping_distance_in_meters=2):
 
     width,height = 640,480
@@ -28,16 +28,15 @@ def detect_obstacle(depth_image, color_image, Measure,\
     text_position = int(height/10),int(width/10)
     # We will be removing the background of objects more than
     #  clipping_distance_in_meters meters away
-    depth_scale = Measure.depth_scale
     clipping_distance = clipping_distance_in_meters / depth_scale
-    threshold = 0.1 / depth_scale
+    threshold = 0.5 / depth_scale
     
     # Remove background - Set pixels further than clipping_distance to grey
     grey_color = 0
     depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
 
     # Render images
-    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.04), cv2.COLORMAP_JET)
+    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.04), cv2.COLORMAP_RAINBOW)
 
     bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, depth_colormap)
 
@@ -85,7 +84,7 @@ def detect_obstacle(depth_image, color_image, Measure,\
         boundRect[i] = cv2.boundingRect(contours[i])
 
     # Draw polygonal contour + bonding rects + circles
-    for i in range(len(contours)):
+    for i in range(len(contours_poly)):
         color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
         cv2.drawContours(color_image, contours_poly, i, color)
 
@@ -95,12 +94,13 @@ if __name__ == "__main__":
     # Create a pipeline
     pipeline = rs.pipeline()
 
-    #Create a config and configure the pipeline to stream
+    # Create a config and configure the pipeline to stream
     #  different resolutions of color and depth streams
     config = rs.config()
-    config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-    config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     width,height = 640,480
+    config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
+    
 
     # Start streaming
     profile = pipeline.start(config)

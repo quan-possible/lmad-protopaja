@@ -8,7 +8,7 @@ import cv2
 import sys
 import numpy as np
 import pyrealsense2 as rs
-from calc_dist import Measure
+import depth_distance
 
 # Pytorch import:
 import torch
@@ -85,7 +85,7 @@ if __name__ == "__main__":
              bias=True)
     )
     # Load pretrained parameters:
-    unet.load_state_dict(torch.load('./saved_models/25.06.20_unet_61_val_nll=-0.20364859596888224.pth', map_location='cpu'))
+    unet.load_state_dict(torch.load('saved_models\\16.07.20_unet_10_val_nll=-0.1609.pt', map_location='cpu'))
     # Load model to current device:
     unet.to(device)
     # Toggle evaluation mode:
@@ -165,9 +165,9 @@ if __name__ == "__main__":
         # Draw possible path:
         
         seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
-        daMeasure = Measure(depth_frame,color_frame,depth_scale)
-        seg,obstacles = detect_obstacle(depth_image, seg, daMeasure, contours)
-        output = paint_path(seg, (89, 92), daMeasure, obstacles)
+        seg,obstacles = detect_obstacle(depth_image, seg, depth_scale)
+        daMeasure = depth_distance.Measure(depth_frame,color_frame,depth_scale, obstacles)
+        output = paint_path(seg, (89, 92), daMeasure)
         # ngon = np.hstack((output,color_image))
         # Display the resulting frame
         cv2.imshow('frame',output)

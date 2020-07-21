@@ -8,6 +8,7 @@ from action import Action
 import itertools  # For creating combinations.
 # Use dataclass to create hash, eq, and order.
 from dataclasses import dataclass
+from distance import euclidean
 import sys
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
@@ -18,7 +19,7 @@ sys.path.insert(1, 'path_finder')
 # When the pixels where the roads appear is determined,
 # they are assigned to the first value of the tuple.
 # Every other pixels are assigned to the latter value.
-reclassifying_val = 90, 0
+road_val_range = 90, 0
 
 
 @dataclass(eq=True, order=True, unsafe_hash=True)
@@ -84,11 +85,12 @@ class PathState(state.State):
            If agent locations are on walls, outside the grid, or not unique.
         """
         self.processed_img = processed_img
-        self.blocked = blocked
         self.Measure = Measure
         self.blocked = Measure.blocked
-        if blocked(location,):
-            raise ValueError(f" Not on the road! ")
+        self.measure = Measure.measure
+        if self.blocked(location) or not on_path(processed_image, location, euclidean,
+                                                 road_val_range[0]):
+            raise ValueError(f" Oh no! ")
         self.cursor = location
       #   print(self.cursor)
 
@@ -103,29 +105,6 @@ class PathState(state.State):
         direct swap of position between any pair of agents, no agent move into
         a wall location or outside the grid, and not more than one agent is
         located at any one position.
-
-        Theory
-        ------
-        One can define simultaneous moves by agents different ways;
-
-        1. The strictest definition requires that every agent is moving to
-        an empty cell. Transition from ...12... to ....12.. is not allowed.
-
-        2. A looser definition does not allow any cycles in the moves.
-        Transition from ...12... to ....12.. is OK
-        but transition from ...12... to ...21... is not.
-
-        The definition used here forbids cycles involving 2 agents. But longer cycles are OK,
-        for example
-        from ..12.. to ..31..
-             ..34..    ..42..
-        as this does not involve agents jumping over each other.
-
-        Agents may also stand still.
-
-        Our agents move to the 4 cardinal directions N, S, W and E only.
-        One could of course allow also the intermediate NE, NW, SE, SW.
-
 
         Returns
         -------
@@ -148,39 +127,23 @@ class PathState(state.State):
             (rt, ct) = (self.cursor[0]+dr, self.cursor[1]+dc)
             # Check if new location is in wall or outside.
             # Do not check move to occupied space just yet.
-            if blocked(self.processed_img, (rt, ct), reclassifying_val[0]):
+            if not self.blocked((rt, ct)) and \
+               on_path(self.processed_img, (rt, ct), road_val_range[0]):
                 moves.append((rt, ct))
         # Now we have a list of possible target locations for the next move.
         # The next thing to do is appending all of them to the list of successors.
         succ = []
         for location in moves:
-            cost = euclidean(self.cursor, location)
+            cost = self.measure(self.cursor, location)
             succ.append((Action(self.cursor, location, cost),
-                         PathState(location, processed_img=self.processed_img)))
+                         PathState(location, self.processed_img, self.Measure)))
         return succ
 
 
-# def blocked(image,image_indices, point, min_dist, measure):
-
-#    def subsampling(image_indices, point, value):
-#       x_idx = indices[0][point[0]-value: point[0]+value, point[1]-value: point[1]+value]
-#       y_idx = indices[1][point[0]-value: point[0]+value, point[1]-value: point[1]+value]
-#       return list(zip(x_idx.flatten(), y_idx.flatten()))
-
-#    neighbor = subsampling(image_indices,point,min_dist):
-#    is_blocked = True
-#    # for pixel in neighbor:
-#    #    if return
-
-#    #  if (point[0] in range(0, image.shape[0])) and (point[1] in range(0, image.shape[1])):
-#    #      return measure(point[0], point[1]) < min_dist
-#    #  else:
-#    #      return False
-
-
-#    indices = np.indices(cac.shape)
-
-
-
-# def find_neigbor(point,step,ref_val):
-#    .where
+def on_path(processed_image, point, road_val):
+    if (point[0] in range(0, processed_image.shape[0])) and (point[1] in range(0, processed_image.shape[1])):
+      # print('concac')
+        return processed_image[point[0], point[1]] == road_val
+    else:
+        # raise ValueError(f" Fuck you! ")
+        return False
