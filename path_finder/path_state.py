@@ -9,6 +9,7 @@ import itertools  # For creating combinations.
 # Use dataclass to create hash, eq, and order.
 from dataclasses import dataclass
 from distance import euclidean
+from depth_distance import *
 import sys
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
@@ -86,9 +87,9 @@ class PathState(state.State):
         """
         self.processed_img = processed_img
         self.Measure = Measure
-        self.blocked = Measure.blocked
-        self.measure = Measure.measure
-        if self.blocked(location) or not on_path(processed_image, location, euclidean,
+      #   self.blocked = Measure.blocked()
+      #   self.measure = Measure.measure()
+        if self.Measure.blocked(location) or not on_path(self.processed_img, location,
                                                  road_val_range[0]):
             raise ValueError(f" Oh no! ")
         self.cursor = location
@@ -127,14 +128,14 @@ class PathState(state.State):
             (rt, ct) = (self.cursor[0]+dr, self.cursor[1]+dc)
             # Check if new location is in wall or outside.
             # Do not check move to occupied space just yet.
-            if not self.blocked((rt, ct)) and \
+            if not self.Measure.blocked((rt, ct)) and \
                on_path(self.processed_img, (rt, ct), road_val_range[0]):
                 moves.append((rt, ct))
         # Now we have a list of possible target locations for the next move.
         # The next thing to do is appending all of them to the list of successors.
         succ = []
         for location in moves:
-            cost = self.measure(self.cursor, location)
+            cost = self.Measure.measure(self.cursor, location)
             succ.append((Action(self.cursor, location, cost),
                          PathState(location, self.processed_img, self.Measure)))
         return succ

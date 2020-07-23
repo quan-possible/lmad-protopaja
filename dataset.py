@@ -105,6 +105,7 @@ class BaseDataset(Dataset):
                  new_size=None,
                  crop_size=None,
                  random_resize=False,
+                 random_color=False,
                  is_flip=False,
                  to_tensor=True,
                  mean=[0.485, 0.456, 0.406],
@@ -113,6 +114,7 @@ class BaseDataset(Dataset):
         self.new_size = new_size
         self.crop_size = crop_size
         self.random_resize = random_resize
+        self.random_color = random_color
         self.is_flip = is_flip
         self.to_tensor = to_tensor
         self.mean = mean
@@ -132,8 +134,10 @@ class BaseDataset(Dataset):
             Return:
                 image (2d-array like): Transformed image.
         """
-        image = (image / 255.0).astype(np.float32)
-        image = np.expand_dims(image, 0)
+        image = image.astype(np.float32)[:, :, ::-1]
+        image = image / 255.0
+        image -= self.mean
+        image /= self.std
         return image
 
     def label_transform(self, label):
@@ -186,7 +190,7 @@ class BaseDataset(Dataset):
         image = cv2.resize(image, (new_w, new_h),
                            interpolation = cv2.INTER_LINEAR)
         label = cv2.resize(label, (new_w, new_h),
-                           interpolation = cv2.INTER_AREA)
+                           interpolation = cv2.INTER_NEAREST)
         return image, label
 
     def rand_crop(self, image, label):
@@ -222,6 +226,11 @@ class BaseDataset(Dataset):
         image = image[:, ::flip]
         label = label[:, ::flip]
         return image, label
+    
+    def rand_color(self, image, label):
+        if np.random.randint(2):
+            image = image + np.random.randint(0, 255, dtype="ubyte")
+        return image, label
 
     def resize(self, image, label=None):
         """ Resize the image & label to a specified size (new_size).
@@ -240,7 +249,7 @@ class BaseDataset(Dataset):
             return image
 
         label = cv2.resize(label, self.new_size,
-                           interpolation = cv2.INTER_AREA)
+                           interpolation = cv2.INTER_NEAREST)
         return image, label
 
     def gen_sample(self, image, label):
@@ -254,7 +263,10 @@ class BaseDataset(Dataset):
                 image, label (tuple of 2d-array like):
                 Generated tuple of (image, label)
         """
-        # Resize the (image, label):
+        # Random convert to grayscale:
+        if self.random_color:
+            image, label = self.rand_color(image, label)
+        # Resize:
         if self.new_size:
             image, label = self.resize(image, label)
         # Random resize:
@@ -267,7 +279,7 @@ class BaseDataset(Dataset):
         if self.is_flip:
             image, label = self.rand_flip(image, label)
         # Transform:
-        image = self.image_transform(image)
+        image = self.image_transform(image).transpose((2, 0, 1))
         label = self.label_transform(label)
         # To tensor:
         if self.to_tensor:
@@ -282,13 +294,14 @@ class Drivable(BaseDataset):
                  new_size=None,
                  crop_size=None,
                  random_resize=False,
+                 random_color=False,
                  is_flip=False,
                  to_tensor=True,
                  mean=[0.485, 0.456, 0.406],
                  std=[0.229, 0.224, 0.225]):
 
         super(Drivable, self).__init__(new_size, crop_size, random_resize,
-                                  is_flip, to_tensor, mean, std,)
+                                       random_color, is_flip, to_tensor, mean, std)
         self.root = root
         self.mode = mode
         # Color convert mapping:
@@ -358,7 +371,7 @@ class Drivable(BaseDataset):
                 image, label (tuple of 2d-array like)
         """
         item = self.files[index]
-        image = cv2.imread(item["image"], cv2.IMREAD_GRAYSCALE)
+        image = cv2.imread(item["image"], cv2.IMREAD_COLOR)
         label = cv2.imread(item["label"], cv2.IMREAD_GRAYSCALE)
         image, label = self.gen_sample(image, label)
         return image, label

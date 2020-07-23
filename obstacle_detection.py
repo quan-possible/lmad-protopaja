@@ -21,7 +21,7 @@ rng.seed(12345)
 
 
 def detect_obstacle(depth_image, color_image, depth_scale,\
-                        clipping_distance_in_meters=2):
+                        clipping_distance_in_meters=5):
 
     width,height = 640,480
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -29,19 +29,33 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
     # We will be removing the background of objects more than
     #  clipping_distance_in_meters meters away
     clipping_distance = clipping_distance_in_meters / depth_scale
-    threshold = 0.5 / depth_scale
+    threshold = 0.1 / depth_scale
     
     # Remove background - Set pixels further than clipping_distance to grey
     grey_color = 0
     depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
 
     # Render images
-    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.04), cv2.COLORMAP_RAINBOW)
-
+    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.12), cv2.COLORMAP_JET)
     bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, depth_colormap)
-
     smoothened = cv2.bilateralFilter(bg_removed,15,80,80)
-    cannied = cv2.Canny(smoothened,20,60)
+    # gray_colormap = cv2.cvtColor(smoothened, cv2.COLOR_BGR2GRAY)
+    # gray_img = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
+   
+    # v = np.median(depth_colormap)
+    # sigma = 0.33
+
+    # high_thresh, thresh_im = cv2.threshold(gray_colormap, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # high_thresh = high_thresh + 20
+    # print(high_thresh)
+    # low_thresh = sigma*high_thresh
+
+    # lower = int(max(0,(1.0-sigma)*v))
+    # upper = int(min(255,(1.0+sigma)*v))
+    # edged2 = cv2.Canny(smoothened, low_thresh, high_thresh)
+    # edged = cv2.Canny(smoothened, lower, upper)
+    cannied = cv2.Canny(smoothened,20,100)
+    # cannied_alt = cv2.Canny(smoothened,18,62)
     # cannied_bool = np.where(np.logical_and(cannied == 255, depth_image < 1900))
     cannied_bool = np.logical_and(cannied == 255, depth_image < (clipping_distance-threshold))
 
@@ -52,6 +66,7 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
 
     kernel = np.ones((21,21), np.uint8)
     img = cv2.dilate(new_cannied,kernel,1)
+    # img = cv2.dilate(edged2,kernel,1)
     img = cv2.erode(img, kernel, 1)
 
     contours,_ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
@@ -88,31 +103,46 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
         color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
         cv2.drawContours(color_image, contours_poly, i, color)
 
+    # nice = np.hstack((color_image, bg_removed))
+    # nice2 = np.vstack((gray_img, edged2,cannied))
+
+
     return color_image,filtered_contours
 
 if __name__ == "__main__":
-    # Create a pipeline
+    bag = r'20200722_160359.bag'
     pipeline = rs.pipeline()
 
-    # Create a config and configure the pipeline to stream
-    #  different resolutions of color and depth streams
     config = rs.config()
-    width,height = 640,480
-    config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
-    config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
+    config.enable_device_from_file(bag, False)
+    config.enable_all_streams()
+
+    profile = pipeline.start(config)
+    depth_sensor = profile.get_device()
+
+    # # Create a pipeline
+    # pipeline = rs.pipeline()
+
+    # # Create a config and configure the pipeline to stream
+    # #  different resolutions of color and depth streams
+    # config = rs.config()
+    # width,height = 640,480
+    # config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
+    # config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
     
 
-    # Start streaming
-    profile = pipeline.start(config)
+    # # Start streaming
+    # profile = pipeline.start(config)
 
     # Getting the depth sensor's depth scale (see rs-align example for explanation)
-    depth_sensor = profile.get_device().first_depth_sensor()
-    depth_scale = depth_sensor.get_depth_scale()
+    # depth_sensor = profile.get_device().first_depth_sensor()
+    # depth_scale = depth_sensor.get_depth_scale()
+    depth_scale = 0.001
     print("Depth Scale is: " , depth_scale)
 
     # We will be removing the background of objects more than
     #  clipping_distance_in_meters meters away
-    clipping_distance_in_meters = 2 #2 meter
+    clipping_distance_in_meters = 5 
     clipping_distance = clipping_distance_in_meters / depth_scale
 
     # Create an align object

@@ -7,7 +7,7 @@ import math
 import numpy as np
 # Local imports
 from path_state import *
-from distance import euclidean
+from distance import *
 from astar import astar
 from depth_distance import Measure
 # External imports
@@ -41,9 +41,9 @@ def paint_path(image, road_val_range, Measure):
     font = cv2.FONT_HERSHEY_SIMPLEX
     height, width = int(image.shape[0]), int(image.shape[1]-1)
     current_pos = height-1,width/2
+    reclassifying_val = 90, 0
 
     def process_image(image,cond):
-        reclassifying_val = 90, 0
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray[cond(gray)] = reclassifying_val[0]
         gray[~cond(gray)] = reclassifying_val[1]     # Boolean Indexing
@@ -58,9 +58,9 @@ def paint_path(image, road_val_range, Measure):
         # Return False if its not the road
 
     def find_road_top_bot(image):
-        try:
-            # Remove the bottom part of the image from the search by slicing until (height-height/10)
-            all_road = np.where(image[0:int(height-height/10),:] == reclassifying_val[0])
+        # Remove the bottom part of the image from the search by slicing until (height-height/10)
+        all_road = np.where(image[0:int(height-height/10),:] == reclassifying_val[0])
+        if all_road[0].size != 0:
             top = all_road[0][0], all_road[1][0]
             
             bot_row = all_road[0][::-1][0]
@@ -68,7 +68,7 @@ def paint_path(image, road_val_range, Measure):
             mid_bot_col = list_bot_col[len(list_bot_col)//2]
             bot = bot_row,mid_bot_col
             return top,bot
-        except:
+        else:
             return None
 
     def get_turning_angle(current_pos,destination):
@@ -85,8 +85,8 @@ def paint_path(image, road_val_range, Measure):
         blocked = Measure.blocked
         measure = Measure.measure
         ''' Let's go!!! '''
-        grid_S = PathState(start,processed_img,blocked)
-        grid_G = PathState(goal, processed_img,blocked)
+        grid_S = PathState(start,processed_img,Measure)
+        grid_G = PathState(goal, processed_img,Measure)
         heuristic = Heuristic(grid_G,measure)
 
         plan1 = astar(grid_S,

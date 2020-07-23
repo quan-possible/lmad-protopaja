@@ -16,8 +16,8 @@ class Measure:
 
     def measure(self, begin, end):
         color_intrin = self.color_intrin
-        ix, iy = begin
-        x, y = end
+        iy, ix = begin
+        y, x = end
         udist = self.depth_frame.get_distance(ix, iy)
         vdist = self.depth_frame.get_distance(x, y)
 
@@ -53,10 +53,12 @@ class Measure:
         scaled_min_dist = min_dist/self.depth_scale
         is_blocked = False
         i = 0
-        while not is_blocked and i < len(self.obstacles):
-            if self.measure(point, obstacles[i]) < scaled_min_dist:
-                is_blocked = True
-            else:
-                i += 1
+
+        if not self.obstacles:
+            while not is_blocked and i < len(self.obstacles):
+                if self.measure(point, self.obstacles[i]) < scaled_min_dist:
+                    is_blocked = True
+                else:
+                    i += 1
 
         return is_blocked

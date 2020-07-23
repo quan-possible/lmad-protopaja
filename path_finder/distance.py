@@ -1,5 +1,6 @@
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
+from depth_distance import Measure
 import math
 import pyrealsense2 as rs
 
@@ -9,7 +10,7 @@ class Heuristic():
         self.measure = measure 
     
     def __call__(self,state):
-        return measure(self.goal.cursor,state.cursor)
+        return self.measure(self.goal.cursor,state.cursor)
 
 
 def euclidean(u,v):
