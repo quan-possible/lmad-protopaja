@@ -78,6 +78,7 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
         filtering = list(filter(lambda x: depth_image[x] > 0, daCon))
         filtered_contours.append(filtering)
 
+    drawing = np.zeros((new_cannied.shape[0], new_cannied.shape[1], 3), dtype=np.uint8)
     distance = []
     for c in filtered_contours:
         # determine the most extreme points along the contour
@@ -85,9 +86,10 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
         all_dist = list(map(lambda x: depth_image[x],c))
         if all_dist:
             distance.append(mean(all_dist))
-                
+
+
     if filtered_contours and distance:
-        cv2.putText(color_image,str(min(distance)),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
+        cv2.putText(drawing,str(min(distance)),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
 
     # Approximate contours to polygons + get bounding rects and circles
     contours_poly = [None]*len(contours)
@@ -101,16 +103,16 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
     # Draw polygonal contour + bonding rects + circles
     for i in range(len(contours_poly)):
         color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
-        cv2.drawContours(color_image, contours_poly, i, color)
+        cv2.drawContours(drawing, contours_poly, i, color)
 
-    # nice = np.hstack((color_image, bg_removed))
+    nice = np.hstack((color_image, depth_colormap, drawing))
     # nice2 = np.vstack((gray_img, edged2,cannied))
 
 
-    return color_image,filtered_contours
+    return nice,filtered_contours
 
 if __name__ == "__main__":
-    bag = r'20200722_160359.bag'
+    bag = r'20200722_150121.bag'
     pipeline = rs.pipeline()
 
     config = rs.config()
@@ -174,7 +176,7 @@ if __name__ == "__main__":
             output,contours = detect_obstacle(depth_image, color_image, depth_scale,\
                             clipping_distance_in_meters)
 
-            cv2.imshow('ngon', output)
+            cv2.imshow('co', output)
             key = cv2.waitKey(1)
             # Press esc or 'q' to close the image window
             if key & 0xFF == ord('q') or key == 27:

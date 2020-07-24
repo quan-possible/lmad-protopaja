@@ -54,7 +54,7 @@ class Measure:
         is_blocked = False
         i = 0
 
-        if not self.obstacles:
+        if self.obstacles:
             while not is_blocked and i < len(self.obstacles):
                 if self.measure(point, self.obstacles[i]) < scaled_min_dist:
                     is_blocked = True

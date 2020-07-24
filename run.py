@@ -20,7 +20,7 @@ from dataset import *
 from models import *
 from new_models import *
 from obstacle_detection import *
-from depth_distance import Measure
+# from depth_distance import Measure
 
 
 if __name__ == "__main__":
@@ -156,14 +156,17 @@ if __name__ == "__main__":
         # seg = seg[:,:,::-1]
         # Draw possible path:
 
-        drive,obstacles = detect_obstacle(depth_image, drive, depth_scale)
-        daMeasure = Measure(depth_frame,color_frame,depth_scale, obstacles)
-        output = paint_path(seg, (89, 92), daMeasure)
-        ngon = np.hstack((seg,drive,color_image))
+        obs_image,obstacles = detect_obstacle(depth_image, drive, depth_scale)
+        # daMeasure = Measure(depth_frame,color_frame,depth_scale, obstacles)
+        output = paint_path(drive, (70, 100))
+        blended = cv2.add(obs_image,output)
+        ngon = np.hstack((blended,color_image))
         # Display the resulting frame
         cv2.imshow('frame',ngon)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        if cv2.waitKey(1) == ord('p'):
+            cv2.waitKey(-1) #wait until any key is pressed
 
     # When everything done, release the capture
     cv2.destroyAllWindows()

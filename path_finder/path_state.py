@@ -1,45 +1,42 @@
 # Importing the folder
-import state
-import numpy as np
-import math
-import cv2
-import pyrealsense2
-from action import Action
-import itertools  # For creating combinations.
-# Use dataclass to create hash, eq, and order.
-from dataclasses import dataclass
-from distance import euclidean
-from depth_distance import *
 import sys
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
 
+from dataclasses import dataclass # Use dataclass to create hash, eq, and order.
+import itertools # For creating combinations.
 # Local imports.
-
-# This is the substitute for the road_val_range.
-# When the pixels where the roads appear is determined,
-# they are assigned to the first value of the tuple.
-# Every other pixels are assigned to the latter value.
-road_val_range = 90, 0
-
+import state 
+from action import Action
+from distance import euclidean
+import cv2
+import math
+import numpy as np
 
 @dataclass(eq=True, order=True, unsafe_hash=True)
 class PathState(state.State):
     """
-    This is Path Planning system for a robot given a picture.
+    This is Multi-Agent Path Planning (MAPP) in rectangular grids.
 
-    The picture is a matrix consisting of rows and columns. The coordinates are
-    determined as road or not road based on its brightness value. (90 is road)
+    The grid consists of rows and columns. Each coordinate location is either
+    empty, or contains a wall, or an agent. Agents are numbered 0 ... N-1.
+    
+    Agents may stay in their location or move N,S,E,W in the grid (but not over
+    the 'edge', in to a wall location, or into a space occupied by another 
+    agent).
+    Crucially, all agents may move simultaneously. See `successors` for more on
+    the specifics.
 
-    The path may move N,NW,NE,S,E,W in the picture (but not to anywhere that is not the road).
+    The cost of a move is the sum of distances for all agents moving.
 
-    The cost of a move is dependent on the direction
-
+    Simultaneous movement has the potential to create a huge number of successor
+    states, with the potential to overwhelm e.g. BFS. This class is designed as
+    an example used with A-star search.
 
     Attributes
     ----------
-    processed_img : ndarray
-       The image already processed (coverted to grayscale and )
+    nrows : int > 0
+       Number of rows in grid.
     ncols : int > 0
        Number of columns in grid.
     agents : tuple of (int,int) pairs
@@ -50,17 +47,17 @@ class PathState(state.State):
     Note
     ----
     Ordering and performance : This class is supposed to be used with the A-star
-    algorithm, which is based around `queue.PriorityQueue`. PriorityQueue
+    algorithm, which is based around `queue.PriorityQueue`. PriorityQueue 
     primarily orders its items based on the priority score (lowest first), but
-    in the event that two scores are the same it requires the data object to
+    in the event that two scores are the same it requires the data object to 
     have an order (a __lt__ method). In the case when there are multiple states
     with the same score the running time can be significantly impacted by the
     state to state ordering. This class simply uses `dataclass` to automatically
-    create an ordering, which means that there are some configurations
+    create an ordering, which means that there are some configurations 
     (especially with open spaces) when finding a path in one direction (S->G) is
     much slower/faster than the other (G->S). Some specific implementations of
     __lt__ may give a better on-average performance.
-
+    
     See
     ---
     mappdistance.py
@@ -70,12 +67,12 @@ class PathState(state.State):
     """
 
     # Attributes for dataclass
-    cursor: tuple
-
-    def __init__(self, location, processed_img, Measure):
+    cursor : tuple
+   
+    def __init__(self, location, processed_img):
         """
         Create new state.
-
+        
         Parameters
         ----------
         See class attributes above.
@@ -86,17 +83,19 @@ class PathState(state.State):
            If agent locations are on walls, outside the grid, or not unique.
         """
         self.processed_img = processed_img
-        self.Measure = Measure
-      #   self.blocked = Measure.blocked()
-      #   self.measure = Measure.measure()
-        if self.Measure.blocked(location) or not on_path(self.processed_img, location,
-                                                 road_val_range[0]):
-            raise ValueError(f" Oh no! ")
+        self.reclassifying_val = 90
+      # #   print(location)
+      #   Check input while copying agents
+        if not wall_mech(self.processed_img,location,self.reclassifying_val):
+            print(location)
+            raise ValueError(f" Fuck you! ")
         self.cursor = location
       #   print(self.cursor)
 
-    def apply(self, action):
+
+    def apply(self,action):
         return PathState(action.target, self.processed_img)
+
 
     def successors(self):
         """
@@ -106,6 +105,29 @@ class PathState(state.State):
         direct swap of position between any pair of agents, no agent move into
         a wall location or outside the grid, and not more than one agent is
         located at any one position.
+
+        Theory
+        ------
+        One can define simultaneous moves by agents different ways;
+        
+        1. The strictest definition requires that every agent is moving to
+        an empty cell. Transition from ...12... to ....12.. is not allowed.
+        
+        2. A looser definition does not allow any cycles in the moves.
+        Transition from ...12... to ....12.. is OK
+        but transition from ...12... to ...21... is not.
+
+        The definition used here forbids cycles involving 2 agents. But longer cycles are OK,
+        for example
+        from ..12.. to ..31..
+             ..34..    ..42..
+        as this does not involve agents jumping over each other.
+
+        Agents may also stand still.
+
+        Our agents move to the 4 cardinal directions N, S, W and E only.
+        One could of course allow also the intermediate NE, NW, SE, SW.
+        
 
         Returns
         -------
@@ -122,29 +144,32 @@ class PathState(state.State):
         #     # move as a list.
         #     moves.append([])
       #   for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step)):
-        for (dr, dc) in ((0, 0), (step, 0), (-step, 0), (0, -step), (0, step),
-                         (-step, -step), (-step, step), (step, -step), (-step, step)):
+        for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step),
+                        (-step,-step),(-step,step)):
             # Calculate new location.
-            (rt, ct) = (self.cursor[0]+dr, self.cursor[1]+dc)
+            (rt,ct) = (self.cursor[0]+dr,self.cursor[1]+dc)
             # Check if new location is in wall or outside.
             # Do not check move to occupied space just yet.
-            if not self.Measure.blocked((rt, ct)) and \
-               on_path(self.processed_img, (rt, ct), road_val_range[0]):
-                moves.append((rt, ct))
-        # Now we have a list of possible target locations for the next move.
-        # The next thing to do is appending all of them to the list of successors.
+            if wall_mech(self.processed_img,(rt,ct),self.reclassifying_val):
+               moves.append((rt,ct))
+        # Now we have a list of possible target locations for each agent.
+        # As every agent can make one move between one state and the next, the
+        # next thing to do is to calculate all possible products of moves,
+        # (i.e. all combinations where one move is picked for each agent).
+        # If the combination contains no place swaps and no shared locations,
+        # it is a valid action.
         succ = []
         for location in moves:
-            cost = self.Measure.measure(self.cursor, location)
-            succ.append((Action(self.cursor, location, cost),
-                         PathState(location, self.processed_img, self.Measure)))
+            cost = euclidean(self.cursor,location)
+            succ.append((Action(self.cursor,location,cost),
+                        PathState(location, processed_img = self.processed_img)))
         return succ
 
 
-def on_path(processed_image, point, road_val):
-    if (point[0] in range(0, processed_image.shape[0])) and (point[1] in range(0, processed_image.shape[1])):
+def wall_mech(image,given_point,reclassifying_val):
+   if (given_point[0] in range(0,image.shape[0])) and (given_point[1] in range(0,image.shape[1])):
       # print('concac')
-        return processed_image[point[0], point[1]] == road_val
-    else:
-        # raise ValueError(f" Fuck you! ")
-        return False
+      return image[given_point[0],given_point[1]] == reclassifying_val
+   else:
+      # raise ValueError(f" Fuck you! ")
+      return False
