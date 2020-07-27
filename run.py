@@ -20,7 +20,8 @@ from dataset import *
 from models import *
 from new_models import *
 from obstacle_detection import *
-# from depth_distance import Measure
+from depth_distance import Measure
+import time
 
 
 if __name__ == "__main__":
@@ -157,8 +158,11 @@ if __name__ == "__main__":
         # Draw possible path:
 
         obs_image,obstacles = detect_obstacle(depth_image, drive, depth_scale)
-        # daMeasure = Measure(depth_frame,color_frame,depth_scale, obstacles)
-        output = paint_path(drive, (70, 100))
+        daMeasure = Measure(depth_frame,color_frame,depth_scale, obstacles)
+        start_time = time.time()
+        output = paint_path(drive, (70, 100),daMeasure)
+        end_time = time.time()
+        print(str(1/(end_time-start_time)) + ' FPS')
         blended = cv2.add(obs_image,output)
         ngon = np.hstack((blended,color_image))
         # Display the resulting frame

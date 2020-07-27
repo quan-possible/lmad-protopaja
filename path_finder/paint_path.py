@@ -8,11 +8,12 @@ import math
 import numpy as np
 from path_state import PathState
 from distance import Heuristic
+from depth_distance import Measure
 from astar import astar
 from timeit import default_timer as timer
 from skimage import draw
 
-def paint_path(image, road_val_range):
+def paint_path(image, road_val_range, Measure):
 
     """
     This is a small file containing a function that helps paint a trajectory for the robot.
@@ -53,18 +54,84 @@ def paint_path(image, road_val_range):
                 (image < road_val_range[1]))   # brightness of road surface (the part of the picture we need).
         # Return False if its not the road
 
-    def find_road_top_bot(image):
-        try:
-            # Remove the bottom part of the image from the search by slicing until (height-height/10)
-            all_road = np.where(image[int(height*0.2):int(height-height/10),:] == reclassifying_val[0])
-            top = all_road[0][0], all_road[1][0]
+    # def find_road_top_bot(image):
+    #     # Remove the bottom part of the image from the search by slicing until (height-height/10)
+    #     all_road = np.where(np.logical_and(image[0:int(height-height/10),:] == reclassifying_val[0] 
+    #                 ,Measure.blocked(image[0:int(height-height/10),:])))
+    #     print(all)
+    #     if all_road[0].size != 0:
+    #         top_row = all_road[0][0]
+    #         top_row_filtered = list(filter(lambda x: Measure > 500, daCon))
+    #         list_top_col = np.where(image[top_row] == reclassifying_val[0])[0]
+    #         mid_top_col = list_top_col[len(list_top_col)//2]
+    #         top = top_row, mid_top_col
             
-            bot_row = all_road[0][::-1][0]
-            list_bot_col = np.where(image[bot_row] == reclassifying_val[0])[0]
-            mid_bot_col = list_bot_col[len(list_bot_col)//2]
-            bot = bot_row,mid_bot_col
-            return top,bot
-        except:
+    #         bot_row = all_road[0][::-1][0]
+    #         list_bot_col = np.where(image[bot_row] == reclassifying_val[0])[0]
+
+    #         mid_bot_col = list_bot_col[len(list_bot_col)//2]
+    #         bot = bot_row,mid_bot_col
+    #         print(top,bot)
+    #         return top,bot
+    #     else:
+    #         return None
+
+
+
+
+    def find_goal_start(image):
+
+        def elim_blocked(lineup,row):
+            target = None
+
+            while lineup.size != 0 and target is None:
+                index = lineup.size//2
+                col = lineup[index]
+                if not Measure.blocked((row,col)):
+                    target = row,col
+                lineup = np.delete(lineup,index)
+
+            return target
+
+        def find_goal(all_road):
+            goal = None
+            i = 0
+            all_rows = all_road[0]
+            while goal is None and i < all_rows.size:
+                row = all_rows[i]
+                lineup = np.where(image[row] == reclassifying_val[0])[0]
+                goal = elim_blocked(lineup,row)
+
+            return goal
+
+        def find_start(all_road):
+            # start = None
+            # row = all_road[0][::-1][0]
+            # print(row)
+            # lineup = image[row]
+            # lineup = lineup[lineup == reclassifying_val[0]]
+
+            # start = elim_blocked(lineup,row)
+            start = None
+            i = 0
+            all_rows = all_road[0][::-1]
+            while start is None and i < all_rows.size:
+                row = all_rows[i]
+                lineup = np.where(image[row] == reclassifying_val[0])[0]
+                start = elim_blocked(lineup,row)
+
+            return start
+
+        all_road = np.where(image[0:int(height-height/10),:] == reclassifying_val[0])
+
+        if all_road[0].size != 0:
+            goal = find_goal(all_road)
+            start = find_start(all_road)
+            # print(goal)
+            # print(start)
+            return goal,start
+            
+        else:
             return None
 
     def get_turning_angle(current_pos,destination):
@@ -75,16 +142,17 @@ def paint_path(image, road_val_range):
         return 360+ang if ang < -180 else ang
 
     processed_img = process_image(image, cond)
+    goal_start = find_goal_start(processed_img)
 
-    if find_road_top_bot(processed_img) != None:
-        goal,start = find_road_top_bot(processed_img)
+    if goal_start is not None:
         ''' Let's go!!! '''
+        goal,start = goal_start
         grid_S = PathState(start,processed_img)
         grid_G = PathState(goal, processed_img)
         heuristic = Heuristic(grid_G)
 
         plan1 = astar(grid_S,
-                        lambda state: heuristic(state) < 21,
+                        lambda state: heuristic(state) < 100,
                         heuristic)
 
         condition = False
@@ -124,15 +192,8 @@ def paint_path(image, road_val_range):
 
     return image
 
-# ''' Let's have some tests! '''
-# img = cv2.imread(
-#     'Test Data\\00e9be89-00001005_train_color.png', 1) # Read image.
-# start = timer()
-# processed = paint_path(img, (89,92))
-# end = timer()
-# print(end - start)
-# # The time it takes to run this function should be around 12ms
+if __name__ == "__main__":
+    def nice(num):
+        return 1 + num
 
-# ''' Display the image '''
-# cv2.imshow('ngon', processed)
-# cv2.waitKey(0)
+    

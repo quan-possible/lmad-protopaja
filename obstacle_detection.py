@@ -78,6 +78,7 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
         filtering = list(filter(lambda x: depth_image[x] > 0, daCon))
         filtered_contours.append(filtering)
 
+    
     drawing = np.zeros((new_cannied.shape[0], new_cannied.shape[1], 3), dtype=np.uint8)
     distance = []
     for c in filtered_contours:
@@ -105,11 +106,10 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
         color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
         cv2.drawContours(drawing, contours_poly, i, color)
 
-    nice = np.hstack((color_image, depth_colormap, drawing))
+    # nice = np.hstack((color_image, depth_colormap, drawing))
     # nice2 = np.vstack((gray_img, edged2,cannied))
-
-
-    return nice,filtered_contours
+    # print(filtered_contours)
+    return drawing,filtered_contours
 
 if __name__ == "__main__":
     bag = r'20200722_150121.bag'

@@ -28,10 +28,9 @@ class Measure:
         dist = math.sqrt(
             math.pow(point1[0] - point2[0], 2) + math.pow(point1[1] - point2[1], 2) + math.pow(
                 point1[2] - point2[2], 2))
-        # print 'distance: '+ str(dist)
         return dist
 
-    def blocked(self, point, min_dist=0.2):
+    def blocked(self, point, min_dist=0):
         """
         Determine if the given point is outside the road.
 
@@ -50,15 +49,15 @@ class Measure:
         Boolean
 
         """
-        scaled_min_dist = min_dist/self.depth_scale
         is_blocked = False
         i = 0
-
         if self.obstacles:
             while not is_blocked and i < len(self.obstacles):
-                if self.measure(point, self.obstacles[i]) < scaled_min_dist:
-                    is_blocked = True
-                else:
-                    i += 1
+                if self.obstacles[i]:
+                    obstacle = self.obstacles[i][0]
+                    if self.measure(point, obstacle) < min_dist:
+                        is_blocked = True
+                
+                i += 1
 
         return is_blocked

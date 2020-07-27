@@ -86,7 +86,7 @@ class PathState(state.State):
         self.reclassifying_val = 90
       # #   print(location)
       #   Check input while copying agents
-        if not wall_mech(self.processed_img,location,self.reclassifying_val):
+        if not on_path(self.processed_img,location,self.reclassifying_val):
             print(location)
             raise ValueError(f" Fuck you! ")
         self.cursor = location
@@ -150,7 +150,7 @@ class PathState(state.State):
             (rt,ct) = (self.cursor[0]+dr,self.cursor[1]+dc)
             # Check if new location is in wall or outside.
             # Do not check move to occupied space just yet.
-            if wall_mech(self.processed_img,(rt,ct),self.reclassifying_val):
+            if on_path(self.processed_img,(rt,ct),self.reclassifying_val):
                moves.append((rt,ct))
         # Now we have a list of possible target locations for each agent.
         # As every agent can make one move between one state and the next, the
@@ -165,11 +165,10 @@ class PathState(state.State):
                         PathState(location, processed_img = self.processed_img)))
         return succ
 
-
-def wall_mech(image,given_point,reclassifying_val):
-   if (given_point[0] in range(0,image.shape[0])) and (given_point[1] in range(0,image.shape[1])):
+def on_path(image,point,reclassifying_val):
+   if (point[0] in range(0,image.shape[0])) and (point[1] in range(0,image.shape[1])):
       # print('concac')
-      return image[given_point[0],given_point[1]] == reclassifying_val
+      return image[point[0],point[1]] == reclassifying_val
    else:
       # raise ValueError(f" Fuck you! ")
       return False
