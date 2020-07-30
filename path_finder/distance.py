@@ -1,13 +1,16 @@
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
+from depth_distance import Measure
 import math
 
 class Heuristic():
-    def __init__(self,goal):
+    def __init__(self,goal,measure):
         self.goal = goal
+        self.measure = measure
     
     def __call__(self,state):
-        return euclidean(self.goal.cursor,state.cursor)
+        dist = self.measure(self.goal.cursor,state.cursor)
+        return dist
 
 
 def euclidean(u,v):

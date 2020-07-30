@@ -30,7 +30,7 @@ class Measure:
                 point1[2] - point2[2], 2))
         return dist
 
-    def blocked(self, point, min_dist=0):
+    def blocked(self, point, min_dist=0.2):
         """
         Determine if the given point is outside the road.
 
@@ -55,8 +55,10 @@ class Measure:
             while not is_blocked and i < len(self.obstacles):
                 if self.obstacles[i]:
                     obstacle = self.obstacles[i][0]
-                    if self.measure(point, obstacle) < min_dist:
+                    dis = self.measure(point, obstacle)
+                    if  dis < min_dist:
                         is_blocked = True
+                        break
                 
                 i += 1
 

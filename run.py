@@ -21,6 +21,8 @@ from models import *
 from new_models import *
 from obstacle_detection import *
 from depth_distance import Measure
+from process_depth import process_depth,remove_background
+from arrow_direction import paint_arrow
 import time
 
 
@@ -55,28 +57,21 @@ if __name__ == "__main__":
     #########################################
     bag = r'20200722_160359.bag'
     pipeline = rs.pipeline()
+    width,height = 640,480
 
     config = rs.config()
-    config.enable_device_from_file(bag, False)
-    config.enable_all_streams()
+
+    config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
+    config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
+    
+    ''' Uncomment to use .bag file '''
+    # config.enable_device_from_file(bag, False)
+    # config.enable_all_streams()
 
     profile = pipeline.start(config)
     depth_sensor = profile.get_device()
 
-    # # Initialize a camera stream:
-    # # Configure depth and color streams
-    # pipeline = rs.pipeline()
-    
-    # config = rs.config()
-    # config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-    # config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-    # width,height = 640,480
-
-    # # Start streaming
-    # profile = pipeline.start(config)
-
-    # # Getting the depth sensor's depth scale (see rs-align example for explanation)
-    # depth_sensor = profile.get_device().first_depth_sensor()
+    # Getting the depth sensor's depth scale (see rs-align example for explanation)
     depth_scale = 0.001
     print("Depth Scale is: " , depth_scale)
 
@@ -88,6 +83,7 @@ if __name__ == "__main__":
     n = 1
 
     while(True):
+        start_time = time.time()
         # Capture frame-by-frame
         frames = pipeline.wait_for_frames()
 
@@ -104,8 +100,7 @@ if __name__ == "__main__":
         depth_image = np.asanyarray(depth_frame.get_data())
 
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
-        # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
-
+        depth_colormap = process_depth(depth_image)
         # Our operations on the frame come here
 
         # Resize camera frame:
@@ -131,36 +126,11 @@ if __name__ == "__main__":
         drive = cv2.resize(drive, (640, 480), interpolation=cv2.INTER_AREA)
         # frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
 
-
-        # # Resize camera frame:
-        # seg = fn.resize(color_image)
-        # dep = fn.resize(depth_image)
-
-        # # Normalize image frame:
-        # seg = fn.image_transform(seg)
-        # # Convert np.array to torch tensor and push to device:
-        # seg = torch.from_numpy(seg).to(device)
-        # # Divide image frame into fragments to utilize GPUs:
-        # seg = fragment(seg, n, True)
-        # # Stack frame fragments into batch of tensors:
-        # seg = torch.stack(seg)
-        # # Segmentation model:
-        # with torch.no_grad():
-        #     seg = unet(seg)
-        # # Get the predict label (with highest probability):
-        # seg = seg.argmax(dim=1).cpu().numpy()
-        # # Compress fragments to a single frame:
-        # seg = glue_fragments(seg, n)
-        # # Convert to colored frame:
-        # seg = fn.convert_label(seg, True)
-        # seg = fn.convert_color(seg, False)
-        # seg = seg[:,:,::-1]
         # Draw possible path:
-
-        obs_image,obstacles = detect_obstacle(depth_image, drive, depth_scale)
+        obs_image,obstacles = detect_obstacle(depth_image,drive,depth_colormap, depth_scale)
         daMeasure = Measure(depth_frame,color_frame,depth_scale, obstacles)
-        start_time = time.time()
-        output = paint_path(drive, (70, 100),daMeasure)
+        output = paint_path(depth_image,drive,daMeasure,depth_scale)
+        # output = paint_arrow(drive,daMeasure)
         end_time = time.time()
         print(str(1/(end_time-start_time)) + ' FPS')
         blended = cv2.add(obs_image,output)

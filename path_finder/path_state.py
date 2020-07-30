@@ -9,6 +9,7 @@ import itertools # For creating combinations.
 import state 
 from action import Action
 from distance import euclidean
+from depth_distance import Measure
 import cv2
 import math
 import numpy as np
@@ -64,12 +65,13 @@ class PathState(state.State):
        For a couple of simple heuristics.
     astar.py
        For a few examples using astar to solve MAPP problems.
+       
     """
 
     # Attributes for dataclass
     cursor : tuple
    
-    def __init__(self, location, processed_img):
+    def __init__(self, location, processed_img, Measure):
         """
         Create new state.
         
@@ -84,9 +86,11 @@ class PathState(state.State):
         """
         self.processed_img = processed_img
         self.reclassifying_val = 90
+        self.Measure = Measure
       # #   print(location)
       #   Check input while copying agents
-        if not on_path(self.processed_img,location,self.reclassifying_val):
+        if not on_path(self.processed_img,location,self.reclassifying_val) \
+                                    and self.Measure.blocked(location):
             print(location)
             raise ValueError(f" Fuck you! ")
         self.cursor = location
@@ -94,7 +98,7 @@ class PathState(state.State):
 
 
     def apply(self,action):
-        return PathState(action.target, self.processed_img)
+        return PathState(action.target, self.processed_img,self.Measure)
 
 
     def successors(self):
@@ -136,7 +140,7 @@ class PathState(state.State):
         """
         # This list will store possible target locations for each agent.
         moves = []
-        step = 30
+        step = 20
         # Go over all agents/locations.
         # The index is the agent id so simply iterate over it.
         # for (r,c) in self.agents:
@@ -150,7 +154,8 @@ class PathState(state.State):
             (rt,ct) = (self.cursor[0]+dr,self.cursor[1]+dc)
             # Check if new location is in wall or outside.
             # Do not check move to occupied space just yet.
-            if on_path(self.processed_img,(rt,ct),self.reclassifying_val):
+            if on_path(self.processed_img,(rt,ct),self.reclassifying_val) and \
+               not self.Measure.blocked((rt,ct)):
                moves.append((rt,ct))
         # Now we have a list of possible target locations for each agent.
         # As every agent can make one move between one state and the next, the
@@ -160,9 +165,9 @@ class PathState(state.State):
         # it is a valid action.
         succ = []
         for location in moves:
-            cost = euclidean(self.cursor,location)
+            cost = self.Measure.measure(self.cursor,location)
             succ.append((Action(self.cursor,location,cost),
-                        PathState(location, processed_img = self.processed_img)))
+                        PathState(location,self.processed_img,self.Measure)))
         return succ
 
 def on_path(image,point,reclassifying_val):

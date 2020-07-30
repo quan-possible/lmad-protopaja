@@ -1,6 +1,3 @@
-## License: Apache 2.0. See LICENSE file in root directory.
-## Copyright(c) 2017 Intel Corporation. All Rights Reserved.
-
 #####################################################
 ##              Align Depth to Color               ##
 #####################################################
@@ -8,6 +5,7 @@
 # First import the library
 import pyrealsense2 as rs
 from statistics import mean
+from process_depth import *
 # Import Numpy for easy array manipulation
 import numpy as np
 # Import OpenCV for easy image rendering
@@ -20,43 +18,29 @@ rng.seed(12345)
 # Streaming loop
 
 
-def detect_obstacle(depth_image, color_image, depth_scale,\
-                        clipping_distance_in_meters=5):
+def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001):
 
     width,height = 640,480
     font = cv2.FONT_HERSHEY_SIMPLEX
     text_position = int(height/10),int(width/10)
     # We will be removing the background of objects more than
     #  clipping_distance_in_meters meters away
-    clipping_distance = clipping_distance_in_meters / depth_scale
+    clipping_distance_in_meters = 5
+    clipping_distance = 5 / depth_scale
     threshold = 0.1 / depth_scale
     
-    # Remove background - Set pixels further than clipping_distance to grey
-    grey_color = 0
-    depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
+    # # Remove background - Set pixels further than clipping_distance to grey
+    # grey_color = 0
+    # depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
 
     # Render images
-    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.12), cv2.COLORMAP_JET)
-    bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, depth_colormap)
-    smoothened = cv2.bilateralFilter(bg_removed,15,80,80)
-    # gray_colormap = cv2.cvtColor(smoothened, cv2.COLOR_BGR2GRAY)
-    # gray_img = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-   
-    # v = np.median(depth_colormap)
-    # sigma = 0.33
+    # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.12), cv2.COLORMAP_JET)
 
-    # high_thresh, thresh_im = cv2.threshold(gray_colormap, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # high_thresh = high_thresh + 20
-    # print(high_thresh)
-    # low_thresh = sigma*high_thresh
+    bg_removed = remove_background(depth_image,depth_colormap,clipping_distance_in_meters)
+    # bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, depth_colormap)
 
-    # lower = int(max(0,(1.0-sigma)*v))
-    # upper = int(min(255,(1.0+sigma)*v))
-    # edged2 = cv2.Canny(smoothened, low_thresh, high_thresh)
-    # edged = cv2.Canny(smoothened, lower, upper)
-    cannied = cv2.Canny(smoothened,20,100)
-    # cannied_alt = cv2.Canny(smoothened,18,62)
-    # cannied_bool = np.where(np.logical_and(cannied == 255, depth_image < 1900))
+
+    cannied = cv2.Canny(bg_removed,20,100)
     cannied_bool = np.logical_and(cannied == 255, depth_image < (clipping_distance-threshold))
 
     new_cannied = np.zeros((height,width),dtype=np.uint8)
@@ -66,7 +50,6 @@ def detect_obstacle(depth_image, color_image, depth_scale,\
 
     kernel = np.ones((21,21), np.uint8)
     img = cv2.dilate(new_cannied,kernel,1)
-    # img = cv2.dilate(edged2,kernel,1)
     img = cv2.erode(img, kernel, 1)
 
     contours,_ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
@@ -173,8 +156,9 @@ if __name__ == "__main__":
             depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
 
-            output,contours = detect_obstacle(depth_image, color_image, depth_scale,\
-                            clipping_distance_in_meters)
+            depth_colormap = process_depth(depth_image)
+
+            output,contours = detect_obstacle(depth_image,color_image,depth_colormap, depth_scale)
 
             cv2.imshow('co', output)
             key = cv2.waitKey(1)
