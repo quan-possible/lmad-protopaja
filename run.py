@@ -25,7 +25,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Initialize a model:
     drivable = ResAttnGateUNet(ch_in=3, ch_out=3, ch_init=16, bias=False)
-    segment = nn.DataParallel(OrigUNet(in_channels=3, out_channels=len(classes)+1, init_features=16, bias=True))
+    segment = nn.DataParallel(UNet(in_channels=3, out_channels=len(classes)+1, init_features=16, bias=True))
     #unet = nn.DataParallel(unet)
     # Load pretrained parameters:
     drivable.load_state_dict(torch.load('./saved_models/21.07.20_ResAttnGateUNet_23_val_cel=-0.1606.pt', map_location='cpu'))
