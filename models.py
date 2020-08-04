@@ -47,19 +47,19 @@ class UNet(nn.Module):
                 bias (bool): If True, use bias parameters to CNN block,
                         else don't use bias in CNN block.
         """
-        super(OrigUNet, self).__init__()
+        super(UNet, self).__init__()
 
         features = init_features
-        self.encoder1 = OrigUNet._block(in_channels, features, bias, name="enc1")
+        self.encoder1 = UNet._block(in_channels, features, bias, name="enc1")
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder2 = OrigUNet._block(features, features * 2, bias, name="enc2")
+        self.encoder2 = UNet._block(features, features * 2, bias, name="enc2")
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder3 = OrigUNet._block(features * 2, features * 4, bias, name="enc3")
+        self.encoder3 = UNet._block(features * 2, features * 4, bias, name="enc3")
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder4 = OrigUNet._block(features * 4, features * 8, bias, name="enc4")
+        self.encoder4 = UNet._block(features * 4, features * 8, bias, name="enc4")
         self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
 
-        self.bottleneck = OrigUNet._block(features * 8, features * 16, bias, name="bottleneck")
+        self.bottleneck = UNet._block(features * 8, features * 16, bias, name="bottleneck")
 
         self.upconv4 = nn.ConvTranspose2d(
             features * 16, features * 8, kernel_size=2, stride=2
