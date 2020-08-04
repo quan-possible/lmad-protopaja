@@ -8,7 +8,6 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
 from models import *
-from new_models import *
 from path_finding import *
 
 if __name__ == "__main__":
