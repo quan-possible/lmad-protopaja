@@ -3,7 +3,26 @@ from dataclasses import dataclass
 from depth_distance import Measure
 import math
 
+
 class Heuristic():
+    ''' 
+    Heuristics for A-star.
+
+    Attributes
+    ----------
+    goal : (int,int)
+       Coordinate of the goal.
+    measure : function
+       Function used to measure the distance between a given point and the goal.
+
+    See
+    ---
+    paint_path.py
+       Where it is first defined
+    astar.py
+       Where it is used.
+    '''
+
     def __init__(self,goal,measure):
         self.goal = goal
         self.measure = measure
@@ -15,18 +34,18 @@ class Heuristic():
 
 def euclidean(u,v):
     """ 
-    Manhattan distance between two points. 
+    Euclidean distance between two points. 
     
     Helper function.
     
     Parameters
     ----------
-    u : pair of (int,int)
-    v : pair of (int,int)
+    u : (int,int)
+    v : (int,int)
     Returns
     -------
     int
-       Manhattan distance.
+       Euclidean distance.
     """
     x1,y1 = u
     x2,y2 = v

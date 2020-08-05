@@ -9,11 +9,10 @@ import math
 import numpy as np
 
 # Local imports
-from path_state import PathState
+from path_state import *
 from distance import Heuristic
 from depth_distance import Measure
 from astar import astar
-from timeit import default_timer as timer
 from skimage import draw
 from process_depth import *
 
@@ -41,9 +40,9 @@ def paint_path(depth_image,image,Measure, \
     Measure : Measure object
         See 'depth_distance.py'
     depth_scale : float
-        The scale of the stream of depth coming from the Realsense camera 
-        (for example, 0.001 means a value of 1000 for a pixel given by the 
-        camera equals 1 meter in real life)
+        The scale of the stream of depth coming from the Realsense camera.
+        (For example, depth_scale=0.001 means a pixel value of 1000 equals
+         1 meter in real life)
     threshold : pair of (int,int)
         Brightness value (B&W) of the part of the pavement the robot needs
         to follow
@@ -54,23 +53,21 @@ def paint_path(depth_image,image,Measure, \
         The painted version of the image.
     """
 
-    clipping_distance_in_meters = 4
-    clipping_distance = 4 / depth_scale
     font = cv2.FONT_HERSHEY_SIMPLEX
     height, width = int(image.shape[0]), int(image.shape[1]-1)
     mid_bottom = height-1,width/2
-    # This is the new values for the thresholded pixels.
-    # When the pixels where the pavements appear is determined,
-    # they are assigned to the first value of the tuple.
-    # Every other pixels are assigned to the latter value.
-    new_val = 90, 0
 
-    # Threshold only the needed part of the image.
+    # Clipping distance used to remove background. This function only acts on
+    # target within a 4-meter radius.
+    clipping_distance_in_meters = 4
+    clipping_distance = 4 / depth_scale
+
+    # Threshold only the needed part of the image (i.e. the pavement we are travelling on).
     def process_image(image,cond):
         image = remove_background(depth_image,image,clipping_distance_in_meters,depth_scale)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray[cond(gray)] = new_val[0]
-        gray[~cond(gray)] = new_val[1]     # Boolean Indexing
+        gray[cond(gray)] = new_val
+        gray[~cond(gray)] = 0    # Boolean Indexing
 
         return gray
 
@@ -105,13 +102,12 @@ def paint_path(depth_image,image,Measure, \
         # and pass the 'blocked' condition.
         def find_goal(all_pavement):
             goal = None
-            # i = int(height*0.1)
-            i = 40
+            i = 40 # not 0 as to avoid the fluctuating edge.
             all_rows = set(all_pavement[0])
             all_rows = list(all_rows)
             while goal is None and i < len(all_rows):
                 row = all_rows[i]
-                lineup = np.where(processed_img[row] == new_val[0])[0]
+                lineup = np.where(processed_img[row] == new_val)[0]
                 goal = elim_blocked(lineup,row)
                 i += 1
 
@@ -120,26 +116,27 @@ def paint_path(depth_image,image,Measure, \
         # Find the bottom middle pixel which has the brightness value of 'new_val' and pass the 
         # 'blocked' condition.
         def find_start(all_pavement):
-            lineup = np.where(processed_img[bot_row] == new_val[0])[0]
+            lineup = np.where(processed_img[bot_row] == new_val)[0]
             start = elim_blocked(lineup,bot_row)
             return start
 
         # Find all the indices of the pixel which has 'new_val' brightness value.
-        all_pavement = np.where(processed_img[:bot_row,:] == new_val[0])
+        all_pavement = np.where(processed_img[:bot_row,:] == new_val)
 
+        # Start finding goal and start
         if all_pavement[0].size != 0:
             goal = find_goal(all_pavement)
             start = find_start(all_pavement)
-            # print(goal)
-            # print(start)
+
             return goal,start
             
         else:
             return None,None
 
-    def get_turning_angle(mid_bottom,destination):
+    # Given the first point on the path, calculate the angle the robot has to make to get to that
+    def get_turning_angle(target):
         bot_right = (height-height/10,width/2)
-        ang = math.degrees(math.atan2(destination[1]-mid_bottom[1], destination[0]-mid_bottom[0]) - \
+        ang = math.degrees(math.atan2(target[1]-mid_bottom[1], target[0]-mid_bottom[0]) - \
             math.atan2(bot_right[1]-mid_bottom[1], bot_right[0]-mid_bottom[0]))
         # return str(ang + 360) if ang < 0 else str(ang)
         return 360+ang if ang < -180 else ang
@@ -160,7 +157,7 @@ def paint_path(depth_image,image,Measure, \
                         lambda state: heuristic(state) < 0.3,
                         heuristic)
 
-        def valid_plan(cac):
+        def valid_plan(nice):
             if nice != None:
                 wow = list(nice)
                 if len(wow) != 0:
@@ -168,11 +165,12 @@ def paint_path(depth_image,image,Measure, \
 
         plan = valid_plan(plan1)
         if plan != None:
-            first = plan[0][0]
-            first_target = (mid_bottom,first)
+
 
             # Print the turning angle on image
-            turning_angle = get_turning_angle(mid_bottom,first)
+            first = plan[0][0]
+            first_target = (mid_bottom,first)
+            turning_angle = get_turning_angle(first)
             text_position = int(height/10),int(width/10)
             cv2.putText(image,str(turning_angle),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
             plan.insert(0,first_target)
@@ -183,7 +181,6 @@ def paint_path(depth_image,image,Measure, \
                     int(x[0]), int(x[1]), int(y[0]), int(y[1]))
                 image[rr, cc] = 255
         else:
-        # except:
             cv2.putText(image,'No path found!',(height//2,width//2), \
             font,1,(255,255,255),2, cv2.LINE_AA)
     else:

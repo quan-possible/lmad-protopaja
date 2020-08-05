@@ -1,57 +1,75 @@
-#####################################################
-##              Align Depth to Color               ##
-#####################################################
-
-# First import the library
-import pyrealsense2 as rs
-from statistics import mean
+# Local imports
 from process_depth import *
-# Import Numpy for easy array manipulation
+
+# Basic imports
+import pyrealsense2 as rs
 import numpy as np
-# Import OpenCV for easy image rendering
 import cv2
 import argparse
 import random as rng
+from statistics import mean
+
 rng.seed(12345)
 
-
-# Streaming loop
-
-
 def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001):
+
+    """
+    Detect obstacles by deploying Canny filter on the depth_colormap.
+
+    Prerequisites
+    -------------
+    Realsense SDK and Pyrealsense: Realsense camera interface.
+    Opencv: Works with images.
+    Numpy: Matrices manipulations and calculations.
+    
+    Parameters
+    ----------
+    depth_image: numpy.ndarray
+        Depth image coming from the Realsense camera
+    color_image : numpy.ndarray
+        RGB image
+    depth_colormap : numpy.ndarray
+        Depth image converted to colormap
+    depth_scale : float
+        The scale of the stream of depth coming from the Realsense camera.
+        (For example, depth_scale=0.001 means a pixel value of 1000 equals
+         1 meter in real life)
+    
+    Returns
+    -------
+    image : numpy.ndarray
+        The painted version of the image.
+    filtered_contours : list of list of (int,int)
+        list of list of pixels that form the contours of the obstacles.
+
+    """
 
     width,height = 640,480
     font = cv2.FONT_HERSHEY_SIMPLEX
     text_position = int(height/10),int(width/10)
     # We will be removing the background of objects more than
-    #  clipping_distance_in_meters meters away
+    # clipping_distance_in_meters meters away
     clipping_distance_in_meters = 5
     clipping_distance = 5 / depth_scale
     threshold = 0.1 / depth_scale
-    
-    # # Remove background - Set pixels further than clipping_distance to grey
-    # grey_color = 0
-    # depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) #depth image is 1 channel, color is 3 channels
 
-    # Render images
-    # depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.12), cv2.COLORMAP_JET)
-
+    # First, remove the background
     bg_removed = remove_background(depth_image,depth_colormap,clipping_distance_in_meters)
-    # bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, depth_colormap)
 
-
+    # Deploy the Canny filter
     cannied = cv2.Canny(bg_removed,20,100)
+
+    # Cut off the line at the border
     cannied_bool = np.logical_and(cannied == 255, depth_image < (clipping_distance-threshold))
-
     new_cannied = np.zeros((height,width),dtype=np.uint8)
-
     new_cannied[cannied_bool] = 255
-    # gray_color_image[cannied_bool] = 255
 
+    # Perform morphological operations
     kernel = np.ones((21,21), np.uint8)
     img = cv2.dilate(new_cannied,kernel,1)
     img = cv2.erode(img, kernel, 1)
 
+    # Find Contours
     contours,_ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     
     # Filter out contours that have 0 depth-value  
@@ -61,37 +79,33 @@ def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001)
         filtering = list(filter(lambda x: depth_image[x] > 0, daCon))
         filtered_contours.append(filtering)
 
-    
+    # Blank image for drawing contours.
     drawing = np.zeros((new_cannied.shape[0], new_cannied.shape[1], 3), dtype=np.uint8)
+
+    # Determine the closest obstacle and its distance to the robot
     distance = []
     for c in filtered_contours:
-        # determine the most extreme points along the contour
-        # resized = c[::2]
+        # Determine the most extreme points along the contour
         all_dist = list(map(lambda x: depth_image[x],c))
         if all_dist:
             distance.append(mean(all_dist))
 
-
     if filtered_contours and distance:
         cv2.putText(drawing,str(min(distance)),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
 
-    # Approximate contours to polygons + get bounding rects and circles
+    # Approximate contours to polygons
     contours_poly = [None]*len(contours)
-    boundRect = [None]*len(contours)
-    centers = [None]*len(contours)
-    radius = [None]*len(contours)
     for i, c in enumerate(contours):
         contours_poly[i] = cv2.approxPolyDP(c, 3, True)
-        boundRect[i] = cv2.boundingRect(contours[i])
 
-    # Draw polygonal contour + bonding rects + circles
+    # Draw polygonal contours
     for i in range(len(contours_poly)):
         color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
         cv2.drawContours(drawing, contours_poly, i, color)
 
     # nice = np.hstack((color_image, depth_colormap, drawing))
-    # nice2 = np.vstack((gray_img, edged2,cannied))
-    # print(filtered_contours)
+
+    # Return the contours image and the list of contours
     return drawing,filtered_contours
 
 if __name__ == "__main__":
@@ -105,23 +119,6 @@ if __name__ == "__main__":
     profile = pipeline.start(config)
     depth_sensor = profile.get_device()
 
-    # # Create a pipeline
-    # pipeline = rs.pipeline()
-
-    # # Create a config and configure the pipeline to stream
-    # #  different resolutions of color and depth streams
-    # config = rs.config()
-    # width,height = 640,480
-    # config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
-    # config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
-    
-
-    # # Start streaming
-    # profile = pipeline.start(config)
-
-    # Getting the depth sensor's depth scale (see rs-align example for explanation)
-    # depth_sensor = profile.get_device().first_depth_sensor()
-    # depth_scale = depth_sensor.get_depth_scale()
     depth_scale = 0.001
     print("Depth Scale is: " , depth_scale)
 

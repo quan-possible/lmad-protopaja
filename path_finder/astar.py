@@ -9,9 +9,8 @@ from path_state import *
 from distance import Heuristic
 import action
 
-
-
 def astar(start_state, goaltest, h):
+
     """
     Perform A-star search.
 
@@ -41,12 +40,10 @@ def astar(start_state, goaltest, h):
     """
     # Dictionary to look up predecessor states and the
     # the actions which took us there. It is empty to start with.
-
     predecessor = {}
 
     # Dictionary holding the (yet) best found distance to a state,
     # the function g(s) in the formula f(s) = h(s) + g(s).
-
     g = {}
 
     # Priority queue holding states to check, the priority of each state is
@@ -77,11 +74,11 @@ def astar(start_state, goaltest, h):
                     goal = ss
         else:
             last_state, last_action = predecessor[goal]
-            pi = [last_action.translate]
+            pi = [(last_action.source,last_action.target)]
 
             while last_state != start_state:
                 (last_state, last_action) = predecessor[last_state]
-                pi.append(last_action.translate)
+                pi.append((last_action.source,last_action.target))
 
             if len(pi) != 0:
                 return reversed(pi)

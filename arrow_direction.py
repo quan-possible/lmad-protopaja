@@ -3,9 +3,12 @@ import sys
 # insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
 
+# Basic imports
 import cv2
 import math
 import numpy as np
+
+# Local imports
 from depth_distance import Measure
 from skimage import draw
 from process_depth import *
@@ -21,10 +24,7 @@ def paint_arrow(image,Measure,road_val_range=(70,100)):
     def process_image(image,cond):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray[cond(gray)] = reclassifying_val[0]
-        gray[~cond(gray)] = reclassifying_val[1]     # Boolean Indexing
-        # gray_bool = np.logical_and(gray == reclassifying_val[0], \
-        #     depth_image > (clipping_distance-threshold))
-        # gray[gray_bool] = reclassifying_val[1]
+        gray[~cond(gray)] = reclassifying_val[1]
 
         return gray
 

@@ -1,6 +1,5 @@
-# some_file.py
+# Import path_finder folder
 import sys
-# insert at 1, 0 is the script path (or '' in REPL)
 sys.path.insert(1, 'path_finder')
 
 # Basic import:
@@ -8,7 +7,6 @@ import cv2
 import sys
 import numpy as np
 import pyrealsense2 as rs
-
 
 # Pytorch import:
 import torch
@@ -29,7 +27,7 @@ import time
 if __name__ == "__main__":
 
     #########################################
-    ## INITIALIZE MODELS / ALGORITHMS      ##
+    ##   INITIALIZE MODELS / ALGORITHMS    ##
     #########################################
 
     # Initialize dataset instances for some processing utilities:
@@ -61,12 +59,13 @@ if __name__ == "__main__":
 
     config = rs.config()
 
-    config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
-    config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
+    ''' Uncomment to use video stream from Realsense camera directly '''
+    # config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
+    # config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
     
     ''' Uncomment to use .bag file '''
-    # config.enable_device_from_file(bag, False)
-    # config.enable_all_streams()
+    config.enable_device_from_file(bag, False)
+    config.enable_all_streams()
 
     profile = pipeline.start(config)
     depth_sensor = profile.get_device()
@@ -126,17 +125,22 @@ if __name__ == "__main__":
         drive = cv2.resize(drive, (640, 480), interpolation=cv2.INTER_AREA)
         # frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
 
-        # Draw possible path:
+        # Detect obstacles
         obs_image,obstacles = detect_obstacle(depth_image,drive,depth_colormap, depth_scale)
+        # Form Measure object from the obstacles
         daMeasure = Measure(depth_frame,color_frame,depth_scale, obstacles)
-        output = paint_path(depth_image,drive,daMeasure,depth_scale)
-        # output = paint_arrow(drive,daMeasure)
+
+        # Paint the path. There are 2 versions of path_finding. The one that requires
+        # more parameters is more advanced.
+        # output = paint_path(depth_image,drive,daMeasure,depth_scale)
+        output = paint_arrow(drive,daMeasure)
+
+        blended = cv2.add(obs_image,output)
+        stacked = np.hstack((blended,color_image))
         end_time = time.time()
         print(str(1/(end_time-start_time)) + ' FPS')
-        blended = cv2.add(obs_image,output)
-        ngon = np.hstack((blended,color_image))
         # Display the resulting frame
-        cv2.imshow('frame',ngon)
+        cv2.imshow('frame',stacked)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         if cv2.waitKey(1) == ord('p'):

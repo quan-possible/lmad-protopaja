@@ -1,6 +1,6 @@
+# Basic imports
 from dataclasses import dataclass
 from typing import Any
-
 
 # This is a dataclass, we want equality and repr created automatically.
 @dataclass(eq=True,repr=True)
@@ -27,7 +27,6 @@ class Action:
     source : Any
     target : Any
     cost : float
-    translate : (Any,Any)
 
     def __init__(self, source, target, cost = 1):
         """
@@ -38,4 +37,3 @@ class Action:
         self.source = source
         self.target = target
         self.cost = cost
-        self.translate = self.source,self.target
