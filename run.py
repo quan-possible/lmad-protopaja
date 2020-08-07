@@ -17,9 +17,9 @@ if __name__ == "__main__":
     #########################################
 
     # Initialize dataset instances for some processing utilities:
-    drivable_fn = Drivable(new_size=(448, 224))
+    drivable_fn = Drivable(new_size=(320, 160))
     classes = ['road', 'sidewalk', 'terrain', 'person', 'car']
-    segment_fn = BCG(classes=classes, new_size=(448, 224))
+    segment_fn = BCG(classes=classes, new_size=(320, 160))
     # Get available device:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Initialize a model:
@@ -42,7 +42,12 @@ if __name__ == "__main__":
 
     # Initialize a camera stream:
 
-    cap = cv2.VideoCapture(2)
+    #cap = cv2.VideoCapture(2)
+    import pafy
+    url = "https://www.youtube.com/watch?v=B8Yyf6WKgaM"
+    vpafy = pafy.new(url)
+    play = vpafy.getbest(preftype="mp4")
+    cap = cv2.VideoCapture(play.url)
 
     while(True):
         # Capture frame-by-frame
@@ -65,10 +70,10 @@ if __name__ == "__main__":
         seg = segment_fn.convert_label(seg, True)
         seg = segment_fn.convert_color(seg, False)
         seg = seg[:,:,::-1]
-        seg = cv2.resize(seg, (720, 360), interpolation=cv2.INTER_AREA)
+        #seg = cv2.resize(seg, (720, 360), interpolation=cv2.INTER_AREA)
         drive = drivable_fn.convert_color(drive, False)[:, :, ::-1]
-        drive = cv2.resize(drive, (720, 360), interpolation=cv2.INTER_AREA)
-        frame = cv2.resize(frame, (720, 360), interpolation=cv2.INTER_LINEAR)
+        #drive = cv2.resize(drive, (720, 360), interpolation=cv2.INTER_AREA)
+        #frame = cv2.resize(frame, (720, 360), interpolation=cv2.INTER_LINEAR)
         #seg = paint_path(seg, (89, 92))
 
 
@@ -80,6 +85,5 @@ if __name__ == "__main__":
     # When everything done, release the capture
     cap.release()
     cv2.destroyAllWindows()
-
 
 
