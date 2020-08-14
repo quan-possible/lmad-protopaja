@@ -18,7 +18,6 @@ from paint_path import paint_path
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
 from models import *
-from new_models import *
 from obstacle_detection import *
 from depth_distance import Measure
 from process_depth import process_depth,remove_background
@@ -39,7 +38,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Initialize a model:
     drivable = ResAttnGateUNet(ch_in=3, ch_out=3, ch_init=16, bias=False)
-    segment = nn.DataParallel(OrigUNet(in_channels=3, out_channels=len(classes)+1, init_features=16, bias=True))
+    segment = nn.DataParallel(UNet(in_channels=3, out_channels=len(classes)+1, init_features=16, bias=True))
     #unet = nn.DataParallel(unet)
     # Load pretrained parameters:
     drivable.load_state_dict(torch.load('./saved_models/21.07.20_ResAttnGateUNet_23_val_cel=-0.1606.pt', map_location='cpu'))
@@ -54,7 +53,7 @@ if __name__ == "__main__":
     #########################################
     ## READ CAMERA FEED & APPLY ALGORITHMS ##
     #########################################
-    bag = r'20200722_150024.bag'
+    bag = r'20200812_162332.bag'
     pipeline = rs.pipeline()
     width,height = 640, 480
 
