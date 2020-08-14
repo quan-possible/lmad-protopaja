@@ -7,11 +7,13 @@ import cv2
 import sys
 import numpy as np
 import pyrealsense2 as rs
+import time
 
 # Pytorch import:
 import torch
 import torch.nn.functional as F
 
+# Local import:
 from paint_path import paint_path
 from torch.utils.data import Dataset, DataLoader
 from dataset import *
@@ -21,7 +23,6 @@ from obstacle_detection import *
 from depth_distance import Measure
 from process_depth import process_depth,remove_background
 from arrow_direction import paint_arrow
-import time
 
 
 if __name__ == "__main__":
@@ -53,17 +54,17 @@ if __name__ == "__main__":
     #########################################
     ## READ CAMERA FEED & APPLY ALGORITHMS ##
     #########################################
-    bag = r'20200722_160359.bag'
+    bag = r'20200722_150024.bag'
     pipeline = rs.pipeline()
-    width,height = 640,480
+    width,height = 640, 480
 
     config = rs.config()
 
-    ''' Uncomment to use video stream from Realsense camera directly '''
+    ''' If uncommented, the program will use video stream from Realsense camera directly '''
     # config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
     # config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
     
-    ''' Uncomment to use .bag file '''
+    ''' If uncommented, the program will use .bag file '''
     config.enable_device_from_file(bag, False)
     config.enable_all_streams()
 
@@ -80,6 +81,7 @@ if __name__ == "__main__":
     align_to = rs.stream.color
     align = rs.align(align_to)
     n = 1
+    out = cv2.VideoWriter('nope.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (width*2,height))
 
     while(True):
         start_time = time.time()
@@ -103,7 +105,7 @@ if __name__ == "__main__":
         # Our operations on the frame come here
 
         # Resize camera frame:
-        frame = drivable_fn.resize(color_image)
+        frame = drivable_fn.resize(color_image[:, :, ::-1])
         # Normalize image frame:
         tmp = drivable_fn.image_transform(frame).transpose((2, 0, 1))
         # Convert np.array to torch tensor and push to device:
@@ -117,11 +119,17 @@ if __name__ == "__main__":
         seg = seg.argmax(dim=1).cpu().numpy()[0]
         drive = drive.argmax(dim=1).cpu().numpy()[0]
         # Convert to colored frame:
-        seg = segment_fn.convert_label(seg, True)
-        seg = segment_fn.convert_color(seg, False)
-        seg = seg[:,:,::-1]
-        seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
+        #seg = segment_fn.convert_label(seg, True)
+        #seg = segment_fn.convert_color(seg, False)
+        #seg = seg[:,:,::-1]
+        #seg[drive == 1] = (0, 0, 255)
+        #seg[drive == 2] = (255, 0, 0)
+        #seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
         drive = drivable_fn.convert_color(drive, False)[:, :, ::-1]
+        drive[seg == 1] = (232, 35, 244)
+        drive[seg == 2] = (152,251,152)
+        drive[seg == 3] = (60, 20, 220)
+        drive[seg == 4] = (142, 0, 0)
         drive = cv2.resize(drive, (640, 480), interpolation=cv2.INTER_AREA)
         # frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
 
@@ -132,13 +140,15 @@ if __name__ == "__main__":
 
         # Paint the path. There are 2 versions of path_finding. The one that requires
         # more parameters is more advanced.
-        # output = paint_path(depth_image,drive,daMeasure,depth_scale)
-        output = paint_arrow(drive,daMeasure)
+        output = paint_path(depth_image,drive,daMeasure,depth_scale)
+        # output = paint_arrow(drive,daMeasure)
 
         blended = cv2.add(obs_image,output)
         stacked = np.hstack((blended,color_image))
         end_time = time.time()
         print(str(1/(end_time-start_time)) + ' FPS')
+
+        out.write(stacked)
         # Display the resulting frame
         cv2.imshow('frame',stacked)
         if cv2.waitKey(1) & 0xFF == ord('q'):

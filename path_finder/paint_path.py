@@ -17,7 +17,7 @@ from skimage import draw
 from process_depth import *
 
 def paint_path(depth_image,image,Measure, \
-                depth_scale=0.001,threshold=(70,100)):
+                depth_scale=0.001,thres=(70,80)):
 
     """
     Paint the trajectory for the robot. It uses the A-star algorithm to find the shortest
@@ -43,7 +43,7 @@ def paint_path(depth_image,image,Measure, \
         The scale of the stream of depth coming from the Realsense camera.
         (For example, depth_scale=0.001 means a pixel value of 1000 equals
          1 meter in real life)
-    threshold : pair of (int,int)
+    thres : pair of (int,int)
         Brightness value (B&W) of the part of the pavement the robot needs
         to follow
     
@@ -54,29 +54,31 @@ def paint_path(depth_image,image,Measure, \
     """
 
     font = cv2.FONT_HERSHEY_SIMPLEX
-    height, width = int(image.shape[0]), int(image.shape[1]-1)
-    mid_bottom = height-1,width/2
+    height, width = int(image.shape[0]), int(image.shape[1])
+    mid_bottom = height-1,int(width/2)
 
     # Clipping distance used to remove background. This function only acts on
     # target within a 4-meter radius.
     clipping_distance_in_meters = 4
     clipping_distance = 4 / depth_scale
 
-    # Threshold only the needed part of the image (i.e. the pavement we are travelling on).
+    # thres only the needed part of the image (i.e. the pavement we are travelling on).
     def process_image(image,cond):
         image = remove_background(depth_image,image,clipping_distance_in_meters,depth_scale)
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        mask = cv2.inRange(image, (0, 0, 255), (0, 0, 255))
+        """gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray[cond(gray)] = new_val
-        gray[~cond(gray)] = 0    # Boolean Indexing
-
-        return gray
+        gray[~cond(gray)] = 0    # Boolean Indexing"""
+        mask[mask == 255] = new_val
+        return mask
 
     # Function which return a boolean-indexed version of the image.
     # It selects only the pixel contains the value that fits the given brightness
     # of the pavement.
     def cond(image):
-        return ((image > threshold[0]) &  # threshold[1] and threshold[2] is the range of 
-                (image < threshold[1]))   # brightness of pavement surface (the part of the picture we need).
+        return np.logical_and(image>thres[0], image<thres[1])   # brightness of pavement surface (the part of the picture we need).
+        # return image == thres[0]
+        
         # Return False if its not the pavement
 
 
@@ -141,9 +143,11 @@ def paint_path(depth_image,image,Measure, \
         # return str(ang + 360) if ang < 0 else str(ang)
         return 360+ang if ang < -180 else ang
 
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
 
     processed_img = process_image(image, cond)
-
+    
     goal,start = find_goal_start(processed_img)
     print(goal)
 
@@ -154,7 +158,7 @@ def paint_path(depth_image,image,Measure, \
         heuristic = Heuristic(grid_G, Measure.measure)
 
         plan1 = astar(grid_S,
-                        lambda state: heuristic(state) < 0.3,
+                        lambda state: heuristic(state) < 1,
                         heuristic)
 
         def valid_plan(nice):
@@ -171,15 +175,19 @@ def paint_path(depth_image,image,Measure, \
             first = plan[0][0]
             first_target = (mid_bottom,first)
             turning_angle = get_turning_angle(first)
-            text_position = int(height/10),int(width/10)
+            text_position = int(height - height/10),int(width/10)
             cv2.putText(image,str(turning_angle),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
             plan.insert(0,first_target)
 
             # Draw the path
             for x, y in plan:
-                rr, cc = draw.line(
-                    int(x[0]), int(x[1]), int(y[0]), int(y[1]))
-                image[rr, cc] = 255
+                # rr, cc = draw.line(
+                #     int(x[0]), int(x[1]), int(y[0]), int(y[1]))
+                # image[rr, cc] = 255
+                line_thickness = 2
+                cv2.line(image, (int(x[1]), int(x[0])), (int(y[1]), int(y[0])), \
+                 (255, 255, 255), thickness=line_thickness)
+
         else:
             cv2.putText(image,'No path found!',(height//2,width//2), \
             font,1,(255,255,255),2, cv2.LINE_AA)
