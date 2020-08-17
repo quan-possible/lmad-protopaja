@@ -163,9 +163,6 @@ def paint_path(depth_image,image,Measure, \
 
             # Draw the path
             for x, y in plan:
-                # rr, cc = draw.line(
-                #     int(x[0]), int(x[1]), int(y[0]), int(y[1]))
-                # image[rr, cc] = 255
                 line_thickness = 2
                 cv2.line(image, (int(x[1]), int(x[0])), (int(y[1]), int(y[0])), \
                  (255, 255, 255), thickness=line_thickness)
