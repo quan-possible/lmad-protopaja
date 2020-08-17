@@ -108,6 +108,7 @@ def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001)
     # Return the contours image and the list of contours
     return contour_img,filtered_contours
 
+''' Testing the system '''
 if __name__ == "__main__":
     bag = r'20200722_150121.bag'
     pipeline = rs.pipeline()
@@ -166,6 +167,3 @@ if __name__ == "__main__":
             break
 
     pipeline.stop()
-
-
-        

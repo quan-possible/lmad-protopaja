@@ -13,15 +13,15 @@ from path_state import *
 from distance import Heuristic
 from depth_distance import Measure
 from astar import astar
-from skimage import draw
 from process_depth import *
 
 def paint_path(depth_image,image,Measure, \
-                depth_scale=0.001,thres=(70,80)):
+                depth_scale=0.001,thres=(0, 0, 255)):
 
     """
     Paint the trajectory for the robot. It uses the A-star algorithm to find the shortest
-    path to the upper most pixel which contains the segmented pavement.
+    path to the upper most pixel which contains the segmented pavement. The method has a range of 
+    4 meters because of hardware-related reasons.
 
     Prerequisites
     -------------
@@ -29,7 +29,6 @@ def paint_path(depth_image,image,Measure, \
     Realsense SDK and Pyrealsense: Realsense camera interface.
     Opencv: Works with images.
     Numpy: Matrices manipulations and calculations.
-    Skikit-image: Paints the image.
     
     Parameters
     ----------
@@ -43,9 +42,8 @@ def paint_path(depth_image,image,Measure, \
         The scale of the stream of depth coming from the Realsense camera.
         (For example, depth_scale=0.001 means a pixel value of 1000 equals
          1 meter in real life)
-    thres : pair of (int,int)
-        Brightness value (B&W) of the part of the pavement the robot needs
-        to follow
+    thres : (int,int,int)
+        RGB value of the path the robot needs to follow
     
     Returns
     -------
@@ -57,30 +55,17 @@ def paint_path(depth_image,image,Measure, \
     height, width = int(image.shape[0]), int(image.shape[1])
     mid_bottom = height-1,int(width/2)
 
-    # Clipping distance used to remove background. This function only acts on
-    # target within a 4-meter radius.
+    # Clipping distance used to remove background (the value is 4 as the method only act within a
+    # 4-meter range)
     clipping_distance_in_meters = 4
     clipping_distance = 4 / depth_scale
 
-    # thres only the needed part of the image (i.e. the pavement we are travelling on).
-    def process_image(image,cond):
+    # threshold only the needed part of the image (i.e. the pavement we are travelling on).
+    def process_image(image):
         image = remove_background(depth_image,image,clipping_distance_in_meters,depth_scale)
-        mask = cv2.inRange(image, (0, 0, 255), (0, 0, 255))
-        """gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray[cond(gray)] = new_val
-        gray[~cond(gray)] = 0    # Boolean Indexing"""
+        mask = cv2.inRange(image, thres, thres)
         mask[mask == 255] = new_val
         return mask
-
-    # Function which return a boolean-indexed version of the image.
-    # It selects only the pixel contains the value that fits the given brightness
-    # of the pavement.
-    def cond(image):
-        return np.logical_and(image>thres[0], image<thres[1])   # brightness of pavement surface (the part of the picture we need).
-        # return image == thres[0]
-        
-        # Return False if its not the pavement
-
 
     # Find the coordinate of the starting point and the goal for the A-star algorithm.
     # Note: This requires the image to be already processed (using the function processed_image above)
@@ -143,10 +128,7 @@ def paint_path(depth_image,image,Measure, \
         # return str(ang + 360) if ang < 0 else str(ang)
         return 360+ang if ang < -180 else ang
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-
-    processed_img = process_image(image, cond)
+    processed_img = process_image(image)
     
     goal,start = find_goal_start(processed_img)
     print(goal)
@@ -197,17 +179,6 @@ def paint_path(depth_image,image,Measure, \
 
     return image
 
-
-
-if __name__ == "__main__":
-    nice = list(range(1000))
-    start_time = time.time()
-    
-    wow = set(nice)
-    new = list(wow)
-
-    end_time = time.time()
-    print(new)
 
     
 

@@ -53,7 +53,7 @@ if __name__ == "__main__":
     #########################################
     ## READ CAMERA FEED & APPLY ALGORITHMS ##
     #########################################
-    bag = r'20200812_162332.bag'
+    bag = r'20200812_162029.bag'
     pipeline = rs.pipeline()
     width,height = 640, 480
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     align_to = rs.stream.color
     align = rs.align(align_to)
     n = 1
-    out = cv2.VideoWriter('nope.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (width*2,height))
+    out = cv2.VideoWriter('test.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (width*2,height))
 
     while(True):
         start_time = time.time()
