@@ -39,7 +39,7 @@ def astar(start_state, goaltest, h):
        `goaltest`.
     """
     # Dictionary to look up predecessor states and the
-    # the actions which took us there. It is empty to start with.
+    # the actions which took us there.
     predecessor = {}
 
     # Dictionary holding the (yet) best found distance to a state,
@@ -59,16 +59,25 @@ def astar(start_state, goaltest, h):
         return []
 
     while not Q.empty():
+        # Pop the state with biggest f value.
         f, state = Q.get()
         if f < min_g:
             for (action, ss) in state.successors():
+                # Append successor states that we have not discovered yet,
+                # or ones with existing g value higher than what we
+                # just found.
                 if ss not in g.keys() or g[ss] > (g[state] + action.cost):
                     g[ss] = g[state] + action.cost
                     predecessor[ss] = (state, action)
-                    Q.put((g[ss] + 2*h(ss), ss))
+                    Q.put((g[ss] + 2*h(ss), ss)) # Weighted for better execution speed 
+
                 if goaltest(ss):
                     min_g = g[ss]
                     goal = ss
+
+        # If there is no other state with f value smaller than the
+        # best g value we have found (i.e. no potentially shorter path),
+        # end the search.
         else:
             last_state, last_action = predecessor[goal]
             pi = [(last_action.source, last_action.target)]
