@@ -11,8 +11,8 @@ from statistics import mean
 
 rng.seed(12345)
 
-def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001):
 
+def detect_obstacle(depth_image, color_image, depth_colormap, depth_scale=0.001):
     """
     Detect obstacles by deploying Canny filter on the depth_colormap.
 
@@ -46,7 +46,7 @@ def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001)
 
     height, width = int(color_image.shape[0]), int(color_image.shape[1])
     font = cv2.FONT_HERSHEY_SIMPLEX
-    text_position = int(height/10),int(width/10)
+    text_position = int(height/10), int(width/10)
     # We will be removing the background of objects more than
     # clipping_distance_in_meters meters away
     clipping_distance_in_meters = 5
@@ -54,44 +54,50 @@ def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001)
     threshold = 0.1 / depth_scale
 
     # First, remove the background
-    bg_removed = remove_background(depth_image,depth_colormap,clipping_distance_in_meters)
+    bg_removed = remove_background(
+        depth_image, depth_colormap, clipping_distance_in_meters)
 
     # Deploy the Canny filter
-    cannied = cv2.Canny(bg_removed,20,100)
+    cannied = cv2.Canny(bg_removed, 20, 100)
 
     # Cut off the line at the border
-    cannied_bool = np.logical_and(cannied == 255, depth_image < (clipping_distance-threshold))
-    new_cannied = np.zeros((height,width),dtype=np.uint8)
+    cannied_bool = np.logical_and(
+        cannied == 255, depth_image < (clipping_distance-threshold))
+    new_cannied = np.zeros((height, width), dtype=np.uint8)
     new_cannied[cannied_bool] = 255
 
     # Perform morphological operations
-    kernel = np.ones((21,21), np.uint8)
-    img = cv2.dilate(new_cannied,kernel,1)
+    kernel = np.ones((21, 21), np.uint8)
+    img = cv2.dilate(new_cannied, kernel, 1)
     img = cv2.erode(img, kernel, 1)
 
     # Find Contours
-    contours,_ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
-    
-    # Filter out contours that have 0 depth-value  
+    contours, _ = cv2.findContours(
+        img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+
+    # Filter out contours that have 0 depth-value
     filtered_contours = []
     for c in contours:
-        unpack = list(tuple(reversed(item)) for sublist in c for item in sublist)
+        unpack = list(tuple(reversed(item))
+                      for sublist in c for item in sublist)
         filtering = list(filter(lambda x: depth_image[x] > 0, unpack))
         filtered_contours.append(filtering)
 
     # Blank image for draw contours.
-    contour_img = np.zeros((new_cannied.shape[0], new_cannied.shape[1], 3), dtype=np.uint8)
+    contour_img = np.zeros(
+        (new_cannied.shape[0], new_cannied.shape[1], 3), dtype=np.uint8)
 
     # Determine the closest obstacle and its distance to the robot
     distance = []
     for c in filtered_contours:
         # Determine the most extreme points along the contour
-        all_distance = list(map(lambda x: depth_image[x],c))
+        all_distance = list(map(lambda x: depth_image[x], c))
         if all_distance:
             distance.append(mean(all_distance))
 
     if filtered_contours and distance:
-        cv2.putText(contour_img,str(min(distance)),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
+        cv2.putText(contour_img, str(min(distance)), text_position,
+                    font, 1, (255, 255, 255), 1, cv2.LINE_AA)
 
     # Approximate contours to polygons
     contours_poly = [None]*len(contours)
@@ -100,19 +106,20 @@ def detect_obstacle(depth_image, color_image,depth_colormap,depth_scale = 0.001)
 
     # Draw polygonal contours
     for i in range(len(contours_poly)):
-        color = (rng.randint(0,256), rng.randint(0,256), rng.randint(0,256))
+        color = (rng.randint(0, 256), rng.randint(0, 256), rng.randint(0, 256))
         cv2.drawContours(contour_img, contours_poly, i, color)
 
     # stacked = np.hstack((color_image, depth_colormap, contour_img))
 
     # Return the contours image and the list of contours
-    return contour_img,filtered_contours
+    return contour_img, filtered_contours
 
-''' Testing the system '''
+
+''' Testing the function '''
 if __name__ == "__main__":
     bag = r'20200722_150121.bag'
     pipeline = rs.pipeline()
-    width,height = 640,480
+    width, height = 640, 480
 
     config = rs.config()
     config.enable_device_from_file(bag, False)
@@ -122,10 +129,10 @@ if __name__ == "__main__":
     depth_sensor = profile.get_device()
 
     depth_scale = 0.001
-    print("Depth Scale is: " , depth_scale)
+    print("Depth Scale is: ", depth_scale)
     # We will be removing the background of objects more than
     #  clipping_distance_in_meters meters away
-    clipping_distance_in_meters = 5 
+    clipping_distance_in_meters = 5
     clipping_distance = clipping_distance_in_meters / depth_scale
 
     # Create an align object
@@ -133,7 +140,8 @@ if __name__ == "__main__":
     # The "align_to" is the stream type to which we plan to align depth frames.
     align_to = rs.stream.color
     align = rs.align(align_to)
-    out = cv2.VideoWriter('test-obstacle-detection.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (width*2,height))
+    out = cv2.VideoWriter('test-obstacle-detection.avi',
+                          cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (width*2, height))
 
     while True:
         # Get frameset of color and depth
@@ -144,7 +152,8 @@ if __name__ == "__main__":
         aligned_frames = align.process(frames)
 
         # Get aligned frames
-        aligned_depth_frame = aligned_frames.get_depth_frame() # aligned_depth_frame is a 640x480 depth image
+        # aligned_depth_frame is a 640x480 depth image
+        aligned_depth_frame = aligned_frames.get_depth_frame()
         color_frame = aligned_frames.get_color_frame()
 
         # Validate that both frames are valid
@@ -156,8 +165,9 @@ if __name__ == "__main__":
         grayImage = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
         depth_colormap = process_depth(depth_image)
 
-        output,contours = detect_obstacle(depth_image,color_image,depth_colormap, depth_scale)
-        stacked = np.hstack((color_image,output))
+        output, contours = detect_obstacle(
+            depth_image, color_image, depth_colormap, depth_scale)
+        stacked = np.hstack((color_image, output))
         out.write(stacked)
         cv2.imshow('co', stacked)
         key = cv2.waitKey(1)

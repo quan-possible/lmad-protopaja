@@ -1,3 +1,4 @@
+# Local imports
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from depth_distance import Measure
@@ -23,16 +24,16 @@ class Heuristic():
        Where it is used.
     '''
 
-    def __init__(self,goal,measure):
+    def __init__(self, goal, measure):
         self.goal = goal
         self.measure = measure
-    
-    def __call__(self,state):
-        dist = self.measure(self.goal.cursor,state.cursor)
+
+    def __call__(self, state):
+        dist = self.measure(self.goal.cursor, state.cursor)
         return dist
 
 
-def euclidean(u,v):
+def euclidean(u, v):
     """ 
     Euclidean distance between two points. 
     
@@ -47,6 +48,6 @@ def euclidean(u,v):
     int
        Euclidean distance.
     """
-    x1,y1 = u
-    x2,y2 = v
+    x1, y1 = u
+    x2, y2 = v
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)

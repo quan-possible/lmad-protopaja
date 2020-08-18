@@ -31,9 +31,7 @@ class Measure:
         self.obstacles = obstacles
         self.color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
 
-
     def measure(self, begin, end):
-
         """
         Measure distance between 2 points.
 
@@ -87,10 +85,10 @@ class Measure:
                 if self.obstacles[i]:
                     obstacle = self.obstacles[i][0]
                     dis = self.measure(point, obstacle)
-                    if  dis < min_dist:
+                    if dis < min_dist:
                         is_blocked = True
                         break
-                
+
                 i += 1
 
         return is_blocked

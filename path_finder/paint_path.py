@@ -15,9 +15,9 @@ from depth_distance import Measure
 from astar import astar
 from process_depth import *
 
-def paint_path(depth_image,image,Measure, \
-                depth_scale=0.001,thres=(0, 0, 255)):
 
+def paint_path(depth_image, image, Measure,
+               depth_scale=0.001, thres=(0, 0, 255)):
     """
     Paint the trajectory for the robot. It uses the A-star algorithm to find the shortest
     path to the upper most pixel which contains the segmented pavement. The method has a range of 
@@ -53,7 +53,7 @@ def paint_path(depth_image,image,Measure, \
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     height, width = int(image.shape[0]), int(image.shape[1])
-    mid_bottom = height-1,int(width/2)
+    mid_bottom = height-1, int(width/2)
 
     # Clipping distance used to remove background (the value is 4 as the method only act within a
     # 4-meter range)
@@ -62,7 +62,8 @@ def paint_path(depth_image,image,Measure, \
 
     # threshold only the needed part of the image (i.e. the pavement we are travelling on).
     def process_image(image):
-        image = remove_background(depth_image,image,clipping_distance_in_meters,depth_scale)
+        image = remove_background(
+            depth_image, image, clipping_distance_in_meters, depth_scale)
         mask = cv2.inRange(image, thres, thres)
         mask[mask == 255] = new_val
         return mask
@@ -73,15 +74,15 @@ def paint_path(depth_image,image,Measure, \
         bot_row = int(height-height*0.04)
 
         # Find the point in the middle of the row that pass the 'blocked' condition from object Measure.
-        def elim_blocked(lineup,row):
+        def elim_blocked(lineup, row):
             target = None
             while lineup.size != 0 and target is None:
                 index = lineup.size//2
                 col = lineup[index]
-                if not Measure.blocked((row,col)):
-                    target = row,col
+                if not Measure.blocked((row, col)):
+                    target = row, col
                     break
-                lineup = np.delete(lineup,index)
+                lineup = np.delete(lineup, index)
 
             return target
 
@@ -89,59 +90,59 @@ def paint_path(depth_image,image,Measure, \
         # and pass the 'blocked' condition.
         def find_goal(all_pavement):
             goal = None
-            i = 40 # not 0 as to avoid the fluctuating edge.
+            i = 40  # not 0 as to avoid the fluctuating edge.
             all_rows = set(all_pavement[0])
             all_rows = list(all_rows)
             while goal is None and i < len(all_rows):
                 row = all_rows[i]
                 lineup = np.where(processed_img[row] == new_val)[0]
-                goal = elim_blocked(lineup,row)
+                goal = elim_blocked(lineup, row)
                 i += 1
 
             return goal
 
-        # Find the bottom middle pixel which has the brightness value of 'new_val' and pass the 
+        # Find the bottom middle pixel which has the brightness value of 'new_val' and pass the
         # 'blocked' condition.
         def find_start(all_pavement):
             lineup = np.where(processed_img[bot_row] == new_val)[0]
-            start = elim_blocked(lineup,bot_row)
+            start = elim_blocked(lineup, bot_row)
             return start
 
         # Find all the indices of the pixel which has 'new_val' brightness value.
-        all_pavement = np.where(processed_img[:bot_row,:] == new_val)
+        all_pavement = np.where(processed_img[:bot_row, :] == new_val)
 
         # Start finding goal and start
         if all_pavement[0].size != 0:
             goal = find_goal(all_pavement)
             start = find_start(all_pavement)
 
-            return goal,start
-            
+            return goal, start
+
         else:
-            return None,None
+            return None, None
 
     # Given the first point on the path, calculate the angle the robot has to make to get to that
     def get_turning_angle(target):
-        bot_right = (height-height/10,width/2)
-        ang = math.degrees(math.atan2(target[1]-mid_bottom[1], target[0]-mid_bottom[0]) - \
-            math.atan2(bot_right[1]-mid_bottom[1], bot_right[0]-mid_bottom[0]))
+        bot_right = (height-height/10, width/2)
+        ang = math.degrees(math.atan2(target[1]-mid_bottom[1], target[0]-mid_bottom[0]) -
+                           math.atan2(bot_right[1]-mid_bottom[1], bot_right[0]-mid_bottom[0]))
         # return str(ang + 360) if ang < 0 else str(ang)
         return 360+ang if ang < -180 else ang
 
     processed_img = process_image(image)
-    
-    goal,start = find_goal_start(processed_img)
+
+    goal, start = find_goal_start(processed_img)
     print(goal)
 
     if goal is not None and start is not None:
         ''' Let's go!!! '''
-        grid_S = PathState(start,processed_img,Measure)
-        grid_G = PathState(goal, processed_img,Measure)
+        grid_S = PathState(start, processed_img, Measure)
+        grid_G = PathState(goal, processed_img, Measure)
         heuristic = Heuristic(grid_G, Measure.measure)
 
         plan1 = astar(grid_S,
-                        lambda state: heuristic(state) < 1,
-                        heuristic)
+                      lambda state: heuristic(state) < 1,
+                      heuristic)
 
         def valid_plan(nice):
             if nice != None:
@@ -151,28 +152,27 @@ def paint_path(depth_image,image,Measure, \
 
         plan = valid_plan(plan1)
         if plan != None:
-
-
             # Print the turning angle on image
             first = plan[0][0]
-            first_target = (mid_bottom,first)
+            first_target = (mid_bottom, first)
             turning_angle = get_turning_angle(first)
-            text_position = int(height - height/10),int(width/10)
-            cv2.putText(image,str(turning_angle),text_position,font,1,(255,255,255),1,cv2.LINE_AA)
-            plan.insert(0,first_target)
+            text_position = int(height - height/10), int(width/10)
+            cv2.putText(image, str(turning_angle), text_position,
+                        font, 1, (255, 255, 255), 1, cv2.LINE_AA)
+            plan.insert(0, first_target)
 
             # Draw the path
             for x, y in plan:
                 line_thickness = 2
-                cv2.line(image, (int(x[1]), int(x[0])), (int(y[1]), int(y[0])), \
-                 (255, 255, 255), thickness=line_thickness)
+                cv2.line(image, (int(x[1]), int(x[0])), (int(y[1]), int(y[0])),
+                         (255, 255, 255), thickness=line_thickness)
 
         else:
-            cv2.putText(image,'No path found!',(height//2,width//2), \
-            font,1,(255,255,255),2, cv2.LINE_AA)
+            cv2.putText(image, 'No path found!', (height//2, width//2),
+                        font, 1, (255, 255, 255), 2, cv2.LINE_AA)
     else:
-        cv2.putText(image,'No pavement detected!',(height//2,width//2), \
-        font,1,(255,255,255),2, cv2.LINE_AA)
+        cv2.putText(image, 'No pavement detected!', (height//2, width//2),
+                    font, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     return image
 

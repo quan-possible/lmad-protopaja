@@ -6,11 +6,11 @@ import numpy as np
 import cv2
 
 '''
-File contains helper functions for processing the depth image.
+File containing helper functions for processing the depth image.
 '''
 
-def process_depth(depth_image):
 
+def process_depth(depth_image):
     """
     Given depth_image, return smoothened depth_colormap.
 
@@ -25,14 +25,14 @@ def process_depth(depth_image):
     numpy.ndarray
         Smoothened depth_colormap.
     """
-    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.12), cv2.COLORMAP_JET)
-    smoothened = cv2.bilateralFilter(depth_colormap,15,80,80)
+    depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(
+        depth_image, alpha=0.12), cv2.COLORMAP_JET)
+    smoothened = cv2.bilateralFilter(depth_colormap, 15, 80, 80)
 
     return smoothened
 
 
-def remove_background(depth_image,target_image,clipping_distance_in_meters,depth_scale=0.001,fillin = 0):
-
+def remove_background(depth_image, target_image, clipping_distance_in_meters, depth_scale=0.001, fillin=0):
     """
     Remove background of image.
 
@@ -60,9 +60,11 @@ def remove_background(depth_image,target_image,clipping_distance_in_meters,depth
     """
 
     clipping_distance = clipping_distance_in_meters / depth_scale
-    depth_image_3d = np.dstack((depth_image,depth_image,depth_image)) # depth image is 1 channel, color is 3 channels
-    bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), fillin, target_image)
-    
+    # depth image is 1 channel, color is 3 channels
+    depth_image_3d = np.dstack((depth_image, depth_image, depth_image))
+    bg_removed = np.where((depth_image_3d > clipping_distance) | (
+        depth_image_3d <= 0), fillin, target_image)
+
     return bg_removed
 
 

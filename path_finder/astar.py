@@ -9,8 +9,8 @@ from path_state import *
 from distance import Heuristic
 import action
 
-def astar(start_state, goaltest, h):
 
+def astar(start_state, goaltest, h):
     """
     Perform A-star search.
 
@@ -48,10 +48,7 @@ def astar(start_state, goaltest, h):
 
     # Priority queue holding states to check, the priority of each state is
     # f(s).
-    # Elements are encoded as pairs of (prio, state),
-    # e.g. Q.put( (prio, state ))
-    # And gotten as (prio,state) = Q.get()
-
+    # Elements are encoded as pairs of (prio, state)
     Q = PriorityQueue()
 
     Q.put((h(start_state), start_state))
@@ -74,11 +71,11 @@ def astar(start_state, goaltest, h):
                     goal = ss
         else:
             last_state, last_action = predecessor[goal]
-            pi = [(last_action.source,last_action.target)]
+            pi = [(last_action.source, last_action.target)]
 
             while last_state != start_state:
                 (last_state, last_action) = predecessor[last_state]
-                pi.append((last_action.source,last_action.target))
+                pi.append((last_action.source, last_action.target))
 
             if len(pi) != 0:
                 return reversed(pi)

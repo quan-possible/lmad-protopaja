@@ -19,6 +19,7 @@ import numpy as np
 # they are assigned to the this value.
 new_val = 90
 
+
 @dataclass(eq=True, order=True, unsafe_hash=True)
 class PathState(state.State):
     """
@@ -50,8 +51,8 @@ class PathState(state.State):
     """
 
     # Attributes for dataclass
-    cursor : tuple
-   
+    cursor: tuple
+
     def __init__(self, location, processed_img, Measure):
         """
         Create new state.
@@ -66,21 +67,19 @@ class PathState(state.State):
            If location does not pass 'on_path' and 'blocked' test
            -> For diagnostics reasons.
         """
-        
+
         self.processed_img = processed_img
         self.Measure = Measure
-        
-        # Check if the state location is on a pixel belongs to the pavement (on path) 
+
+        # Check if the state location is on a pixel belongs to the pavement (on path)
         # and is not blocked.
-        if not on_path(self.processed_img,location,new_val) \
-                                    and self.Measure.blocked(location):
+        if not on_path(self.processed_img, location, new_val) \
+                and self.Measure.blocked(location):
             raise ValueError(f" NOOOOOOO!!! ")
         self.cursor = location
 
-
-    def apply(self,action):
-        return PathState(action.target, self.processed_img,self.Measure)
-
+    def apply(self, action):
+        return PathState(action.target, self.processed_img, self.Measure)
 
     def successors(self):
         """
@@ -93,28 +92,29 @@ class PathState(state.State):
         """
         # This list will store possible target locations.
         moves = []
-        
+
         step = 20
 
         # Go over all locations.
-        for (dr,dc) in ((0,0),(step,0),(-step,0),(0,-step),(0,step),
-                        (-step,-step),(-step,step)):
+        for (dr, dc) in ((0, 0), (step, 0), (-step, 0), (0, -step), (0, step),
+                         (-step, -step), (-step, step)):
             # Calculate new location.
-            (rt,ct) = (self.cursor[0]+dr,self.cursor[1]+dc)
+            (rt, ct) = (self.cursor[0]+dr, self.cursor[1]+dc)
             # Check if new location is on path and not blocked.
-            if on_path(self.processed_img,(rt,ct),new_val) and \
-               not self.Measure.blocked((rt,ct)):
-               moves.append((rt,ct))
-        
+            if on_path(self.processed_img, (rt, ct), new_val) and \
+               not self.Measure.blocked((rt, ct)):
+               moves.append((rt, ct))
+
         # Append the found locations to the list of successors.
         succ = []
         for location in moves:
-            cost = self.Measure.measure(self.cursor,location)
-            succ.append((Action(self.cursor,location,cost),
-                        PathState(location,self.processed_img,self.Measure)))
+            cost = self.Measure.measure(self.cursor, location)
+            succ.append((Action(self.cursor, location, cost),
+                         PathState(location, self.processed_img, self.Measure)))
         return succ
 
-def on_path(image,point,new_val):
+
+def on_path(image, point, new_val):
    """
    Determine if the pixel belongs to the pavement.
 
@@ -132,7 +132,7 @@ def on_path(image,point,new_val):
    Boolean value
    """
 
-   if (point[0] in range(0,image.shape[0])) and (point[1] in range(0,image.shape[1])):
-      return image[point[0],point[1]] == new_val
+   if (point[0] in range(0, image.shape[0])) and (point[1] in range(0, image.shape[1])):
+      return image[point[0], point[1]] == new_val
    else:
       return False

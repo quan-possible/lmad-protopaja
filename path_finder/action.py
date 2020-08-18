@@ -24,11 +24,11 @@ class Action:
     """
 
     # Dataclass attributes
-    source : Any
-    target : Any
-    cost : float
+    source: Any
+    target: Any
+    cost: float
 
-    def __init__(self, source, target, cost = 1):
+    def __init__(self, source, target, cost=1):
         """
         Create an action from `source` to `target` with some `cost`.
 
