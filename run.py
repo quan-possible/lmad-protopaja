@@ -21,7 +21,6 @@ from models import *
 from obstacle_detection import *
 from depth_distance import Measure
 from process_depth import process_depth,remove_background
-from arrow_direction import paint_arrow
 
 
 if __name__ == "__main__":
@@ -122,36 +121,25 @@ if __name__ == "__main__":
         seg = seg.argmax(dim=1).cpu().numpy()[0]
         drive = drive.argmax(dim=1).cpu().numpy()[0]
         # Convert to colored frame:
-        #seg = segment_fn.convert_label(seg, True)
-        #seg = segment_fn.convert_color(seg, False)
-        #seg = seg[:,:,::-1]
-        #seg[drive == 1] = (0, 0, 255)
-        #seg[drive == 2] = (255, 0, 0)
-        #seg = cv2.resize(seg, (640, 480), interpolation=cv2.INTER_AREA)
         drive = drivable_fn.convert_color(drive, False)[:, :, ::-1]
         drive[seg == 1] = (232, 35, 244)
         drive[seg == 2] = (152, 251, 152)
         drive[seg == 3] = (60, 20, 220)
         drive[seg == 4] = (142, 0, 0)
         drive = cv2.resize(drive, (640, 480), interpolation=cv2.INTER_AREA)
-        # frame = cv2.resize(frame, (640, 480), interpolation=cv2.INTER_LINEAR)
 
         # Detect obstacles
         obs_image, obstacles = detect_obstacle(
             depth_image, drive, depth_colormap, depth_scale)
         # Form Measure object from the obstacles
-        daMeasure = Measure(depth_frame, color_frame, depth_scale, obstacles)
-
-        # Paint the path. There are 2 versions of path_finding. The one that requires
-        # more parameters is more advanced.
-        output = paint_path(depth_image, drive, daMeasure, depth_scale)
-        # output = paint_arrow(drive,daMeasure)
-
+        measure_obj = Measure(depth_frame, color_frame, depth_scale, obstacles)
+        # Paint the path.
+        output = paint_path(depth_image, drive, measure_obj, depth_scale)
         blended = cv2.add(obs_image, output)
         stacked = np.hstack((blended, color_image))
         end_time = time.time()
         print(str(1/(end_time-start_time)) + ' FPS')
-
+        # Write to video
         out.write(stacked)
         # Display the resulting frame
         cv2.imshow('frame', stacked)

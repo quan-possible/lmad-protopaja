@@ -117,7 +117,7 @@ def detect_obstacle(depth_image, color_image, depth_colormap, depth_scale=0.001)
 
 ''' Testing the function '''
 if __name__ == "__main__":
-    bag = r'20200722_150121.bag'
+    bag = r'20200812_162029.bag'
     pipeline = rs.pipeline()
     width, height = 640, 480
 
