@@ -6,6 +6,7 @@ This repository demonstrates result from our attempt to build self-driving vehic
 
 ## Path Segmentation
 In this module, a **UNet with attention gate** is used to perform **semantic segmentation** and **drivable area segmentation**, which help build the understanding of the vehicle about its surrouding environment. Two models presented here was trained on [CityScapes](https://www.cityscapes-dataset.com/) dataset and [Berkeley Deep Drive](https://bdd-data.berkeley.edu/) dataset.
+
 ![](https://raw.githubusercontent.com/quan-possible/lmad-protopaja/master/images/rsz_screenshot_from_2020-09-04_11-59-43.png)
 ## Object Detection
 In order to ensure the safety for the pedestrians as well as the vehicle itself, **detecting and avoiding obstacles** are most critical tasks for autonomous vehicles. Our module use [Intel Realsense Depth Camera](https://www.intelrealsense.com/stereo-depth/?utm_source=intelcom_website&utm_medium=button&utm_campaign=day-to-day&utm_content=D400_learn-more_button) and several computer vision algorithms to detect obstacles. 
