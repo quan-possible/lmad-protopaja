@@ -4,6 +4,8 @@
 
 Our full report: https://github.com/quan-possible/lmad-protopaja/blob/master/Final.pdf
 
+![Result](https://github.com/quan-possible/lmad-protopaja/blob/master/KY-Trim.gif)
+
 This repository contains the source code of our project - an attempt at building a computer vision system for self-driving delivery robots. The goal is to create a platform that enables machines to navigate the real world safely and efficiently, solving a task that was considered almost impossible until recently. To achieve this, we created a program that comprises 3 fundamental components:
 
 ## Path Segmentation
