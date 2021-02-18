@@ -13,10 +13,13 @@ In this module, a **UNet with attention gate** is used to perform **semantic seg
 
 ![](https://raw.githubusercontent.com/quan-possible/lmad-protopaja/master/images/rsz_screenshot_from_2020-09-04_11-59-43.png)
 ## Obstacle Detection
-To prevent the robot from damaging itself and the surrounding environment, we created this module which is capable of **detecting and avoiding obstacles**. It uses [Intel Realsense Depth Camera](https://www.intelrealsense.com/stereo-depth/?utm_source=intelcom_website&utm_medium=button&utm_campaign=day-to-day&utm_content=D400_learn-more_button) and several computer vision algorithms to detect obstacles. 
+To prevent the robot from damaging itself and the surrounding environment, we created this module which is capable of **detecting and avoiding obstacles**. It uses [Intel Realsense Depth Camera](https://www.intelrealsense.com/stereo-depth/?utm_source=intelcom_website&utm_medium=button&utm_campaign=day-to-day&utm_content=D400_learn-more_button) and several computer vision algorithms to detect obstacles.
+
 ![](https://raw.githubusercontent.com/quan-possible/lmad-protopaja/master/images/rsz_screenshot_from_2020-09-04_12-04-34.png)
+
 ## Path Planning
 Having achieved perception from the two previous modules, **navigating through the vehicle's local environment** is our final goal. The path planning module employs [Weighted A*](http://theory.stanford.edu/~amitp/GameProgramming/AStarComparison.html) algorithm to find the shortest path from the vehicle current location to a front target. 
+
 ![](https://raw.githubusercontent.com/quan-possible/lmad-protopaja/master/images/rsz_screenshot_from_2020-09-04_12-15-08.png)
 
 The work was done in collaboration with Aalto University and Futurice Oy.
